@@ -49,7 +49,7 @@ function App() {
     accounts,
     diaryEntries,
     memos,
-    } = useAppState();
+  } = useAppState();
 
   // 검색 입력값의 로컬 상태
   const [localSearchInput, setLocalSearchInput] = useState('');
@@ -58,24 +58,7 @@ function App() {
   // 검색 결과
   const [searchResults, setSearchResults] = useState<SearchItem[]>([]);
 
-  // 검색 인덱스 초기화 (앱 마운트 시)
-  useEffect(() => {
-    initSearchIndex({
-      customers,
-      companies,
-      transactions,
-      priceChecks,
-      clientRequests,
-      accounts,
-      tasks,
-      memos,
-      diaryEntries,
-      // fees는 현재 state에 없으므로 빈 배열
-      fees: [],
-    });
-  }, [customers, companies, transactions, priceChecks, clientRequests, accounts, tasks, memos, diaryEntries]);
-
-  // 검색 인덱스 자동 동기화 - 데이터 변경 시마다 인덱스 업데이트
+  // 검색 인덱스 초기화 (앱 마운트 시 한 번만)
   useEffect(() => {
     initSearchIndex({
       customers,
@@ -89,21 +72,36 @@ function App() {
       diaryEntries,
       fees: [],
     });
+    console.log('[App] Search index initialized');
+  }, []); // 빈 의존성 - 마운트 시 한 번만 실행
+
+  // 데이터 변경 시 인덱스 업데이트
+  useEffect(() => {
+    initSearchIndex({
+      customers,
+      companies,
+      transactions,
+      priceChecks,
+      clientRequests,
+      accounts,
+      tasks,
+      memos,
+      diaryEntries,
+      fees: [],
+    });
   }, [customers, companies, transactions, priceChecks, clientRequests, accounts, tasks, memos, diaryEntries]);
 
-  // 검색 입력값이 변경될 때마다 실시간 검색 (input 이벤트 리스너 방식)
+  // 검색 입력값이 변경될 때마다 실시간 검색
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (localSearchInput.trim().length >= 1) {
-        const results = search(localSearchInput);
-        setSearchResults(results);
-        setShowSearchResults(true);
-      } else {
-        setSearchResults([]);
-        setShowSearchResults(false);
-      }
-    }, 50);
-    return () => clearTimeout(timer);
+    if (localSearchInput.trim().length >= 1) {
+      const results = search(localSearchInput);
+      console.log('[App] Search triggered:', localSearchInput, 'Results:', results.length);
+      setSearchResults(results);
+      setShowSearchResults(true);
+    } else {
+      setSearchResults([]);
+      setShowSearchResults(false);
+    }
   }, [localSearchInput]);
 
   // 검색 결과 닫기
@@ -138,13 +136,15 @@ function App() {
     }
   };
 
-  // Header에 전달할 검색 핸들러 (input 이벤트 방식)
+  // Header에 전달할 검색 핸들러
   const handleSearchChange = useCallback((query: string) => {
+    console.log('[App] handleSearchChange called:', query);
     setLocalSearchInput(query);
     setSearchQuery(query);
   }, [setSearchQuery]);
 
   const handleSearchSubmit = useCallback(() => {
+    console.log('[App] handleSearchSubmit called');
     if (localSearchInput.trim()) {
       const results = search(localSearchInput);
       setSearchResults(results);
@@ -154,6 +154,7 @@ function App() {
 
   // 검색 결과 클릭 시 카테고리로 이동
   const handleSearchResultClick = useCallback((result: SearchItem) => {
+    console.log('[App] Result clicked:', result.title);
     const categoryId = CATEGORY_MAP[result.type];
     if (categoryId) {
       setActiveCategory(categoryId as CategoryId);
@@ -223,8 +224,8 @@ function App() {
         </div>
       </main>
 
-      {/* 전역 검색 결과 팝업 - searchIndex 기반 */}
-      {showSearchResults && localSearchInput.trim() && (
+      {/* 전역 검색 결과 팝업 */}
+      {showSearchResults && localSearchInput.trim() && searchResults.length > 0 && (
         <>
           {/* 오버레이 */}
           <div 
@@ -292,56 +293,48 @@ function App() {
             </div>
             {/* 결과 목록 */}
             <div style={{ overflow: 'auto', flex: 1, maxHeight: '480px' }}>
-              {searchResults.length === 0 ? (
-                <div style={{ padding: '50px', textAlign: 'center', color: '#64748b' }}>
-                  <div style={{ fontSize: '48px', marginBottom: '12px' }}>🔎</div>
-                  <div style={{ fontSize: '14px', fontWeight: 500 }}>검색 결과가 없습니다</div>
-                  <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>고객명, 종목명, 업체명 등을 검색해보세요</div>
-                </div>
-              ) : (
-                searchResults.map((result, index) => (
-                  <div
-                    key={index}
-                    onClick={() => handleSearchResultClick(result)}
-                    style={{
-                      padding: '14px 20px',
-                      borderBottom: '1px solid #f1f5f9',
-                      cursor: 'pointer',
-                      transition: 'background 0.15s ease',
-                    }}
-                    onMouseOver={(e) => {
-                      e.currentTarget.style.background = '#f8fafc';
-                      e.currentTarget.style.borderLeft = '3px solid #1a3a5c';
-                    }}
-                    onMouseOut={(e) => {
-                      e.currentTarget.style.background = 'white';
-                      e.currentTarget.style.borderLeft = '3px solid transparent';
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-                      <span style={{
-                        fontSize: '10px',
-                        padding: '3px 10px',
-                        borderRadius: '12px',
-                        background: getCategoryColor(result.category),
-                        color: 'white',
-                        fontWeight: 600,
-                      }}>
-                        [{result.category}]
-                      </span>
-                      {result.date && (
-                        <span style={{ fontSize: '12px', color: '#94a3b8' }}>{result.date}</span>
-                      )}
-                    </div>
-                    <div style={{ fontWeight: 600, color: '#1e293b', marginBottom: '3px', fontSize: '15px' }}>
-                      {result.title}
-                    </div>
-                    <div style={{ fontSize: '13px', color: '#64748b' }}>
-                      {result.subtitle}
-                    </div>
+              {searchResults.map((result, index) => (
+                <div
+                  key={`${result.id}-${index}`}
+                  onClick={() => handleSearchResultClick(result)}
+                  style={{
+                    padding: '14px 20px',
+                    borderBottom: '1px solid #f1f5f9',
+                    cursor: 'pointer',
+                    transition: 'background 0.15s ease',
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.background = '#f8fafc';
+                    e.currentTarget.style.borderLeft = '3px solid #1a3a5c';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.background = 'white';
+                    e.currentTarget.style.borderLeft = '3px solid transparent';
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                    <span style={{
+                      fontSize: '10px',
+                      padding: '3px 10px',
+                      borderRadius: '12px',
+                      background: getCategoryColor(result.category),
+                      color: 'white',
+                      fontWeight: 600,
+                    }}>
+                      [{result.category}]
+                    </span>
+                    {result.date && (
+                      <span style={{ fontSize: '12px', color: '#94a3b8' }}>{result.date}</span>
+                    )}
                   </div>
-                ))
-              )}
+                  <div style={{ fontWeight: 600, color: '#1e293b', marginBottom: '3px', fontSize: '15px' }}>
+                    {result.title}
+                  </div>
+                  <div style={{ fontSize: '13px', color: '#64748b' }}>
+                    {result.subtitle}
+                  </div>
+                </div>
+              ))}
             </div>
             {/* 푸터 */}
             <div style={{
