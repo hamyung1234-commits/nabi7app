@@ -1,68 +1,77 @@
-# Implementation Report: 입력 필드 가시성 개선 및 검색 기능 업데이트
+# Implementation Report: 전체 카테고리 자동 검색 기능 강화
 
-## Completed Changes
+## 완료 일시
+2026-04-14
 
-| File | Action | Lines Changed |
-|------|--------|---------------|
-| src/styles/global.css | Modified | +10 |
-| src/App.tsx | Modified | +20 |
-| src/components/Header.tsx | Modified | +5 |
+## 작업 내용
 
-## What Was Built
+### 1. 검색 범위 확장 (6개 → 9개 카테고리)
 
-### 문제 해결
-사용자가 밝은 톤 테마로 변경 후 카테고리 페이지에서 입력 필드가 보이지 않는 문제를 해결했습니다.
+기존 검색 가능 카테고리에 **메모**와 **할 일**을 추가하여 모든 카테고리에서 검색 가능하도록 확장:
 
-### 변경된 스타일
+| 카테고리 | 검색 필드 | 상태 |
+|----------|-----------|------|
+| 고객정보 | 고객명, 연락처, 관심종목 | ✅ 기존 |
+| 기업정보 | 종목명, 업종 | ✅ 기존 |
+| 거래내역 | 종목명, 거래처명 | ✅ 기존 |
+| 시세체크 | 종목명, 보유회사 | ✅ 기존 |
+| 고객의뢰 | 의뢰인명, 대상종목 | ✅ 기존 |
+| 계좌정보 | 은행명, 예금주 | ✅ 기존 |
+| 다이어리 | 일기 내용 | ✅ 기존 |
+| **메모** | 제목, 내용 | ✅ **신규** |
+| **할 일** | 제목, 설명 | ✅ **신규** |
 
-1. **입력 필드 테두리** (`border: 2px solid #475569`)
-   - 기존: `#94a3b8` (밝은 회색)
-   - 변경: `#475569` (더 진한 슬레이트 색상)
-   - 테두리가 명확히 보입니다
+### 2. 자동 검색 표시 로직 개선
 
-2. **플레이스홀더 스타일**
-   - 기존: 일반 텍스트
-   - 변경: `#64748b` 색상 + 이탤릭 스타일
-   - 입력해야 할 항목과 구분됩니다
+- **1글자 이상 입력 시**: 즉시 검색 결과 팝업 표시
+- **ESC 키**: 팝업 닫기
+- **팝업 외부 클릭**: 팝업 닫기
 
-3. **테이블 컨테이너**
-   - 테두리 두께: 1px → 2px
-   - 그림자 추가: `box-shadow: 0 2px 8px rgba(0,0,0,0.08)`
-   - 테이블 경계선이 명확합니다
+### 3. 카테고리 매핑 확장
 
-4. **테이블 셀**
-   - 헤더 배경: `#e2e8f0` (선명한 회색)
-   - 헤더 테두리: `border-bottom: 2px solid #cbd5e1`
-   - 셀 텍스트: `#334155` (어두운 슬레이트)
+검색 결과 클릭 시 해당 카테고리로 자동 이동:
 
-### 검색 기능 개선
+```typescript
+const categoryMap: Record<string, string> = {
+  'customer': 'customer',
+  'company': 'company-info',
+  'transaction': 'transactions',
+  'pricecheck': 'price-check',
+  'request': 'client-requests',
+  'account': 'account-info',
+  'diary': 'diary',
+  'memo': 'memo',      // 신규
+  'task': 'task-list', // 신규
+};
+```
 
-1. **자동 검색 표시**
-   - 1글자 이상 입력하면 즉시 검색 결과 팝업 표시
-   - Enter 키 또는 검색 버튼 클릭 불필요
+## 변경된 파일
 
-2. **전역 검색 범위**
-   - 고객명, 종목명, 연락처, 은행명, 다이어리 내용
-   - 모든 카테고리에서 검색 가능
+| 파일 | 변경 내용 | 라인 |
+|------|-----------|------|
+| `src/App.tsx` | 메모/할 일 검색 추가 + 카테고리 매핑 | +35, -7 |
 
-3. **검색 결과 팝업 UI**
-   - 카테고리별 분류 표시
-   - 결과 클릭 시 해당 카테고리로 자동 이동
-   - ESC 키로 팝업 닫기 가능
+## Git 히스토리
 
-## Verification Results
+| 커밋 | 메시지 |
+|------|--------|
+| `159320d` | feat: 전체 카테고리 자동 검색 기능 강화 |
+| `2d93300` | docs: update implementation report |
+| `93c3cd7` | feat: improve form and table visibility with darker borders |
 
-- Build: Passed
-- TypeScript: Passed (no errors)
-- Visual: Screenshots captured
-- Git Commit: `93c3cd7` pushed to GitHub
+## 배포 URL
 
-## Known Limitations
+**https://hamyung1234-commits.github.io/-nabi-app-/**
 
-없음
+## 사용 방법
 
-## Suggested Next Steps
+1. 상단 **검색창**에 텍스트 입력 (1글자 이상)
+2. 모든 카테고리에서 **자동 검색**되어 팝업 표시
+3. 결과 클릭 시 **해당 카테고리로 자동 이동**
+4. **ESC** 키 또는 팝업 외부 클릭으로 닫기
 
-1. GitHub Pages 자동 배포 확인
-2. 모바일 환경에서 입력 필드 가시성 테스트
-3. 추가 UX 개선 요청사항 반영
+## 검증 결과
+
+- ✅ TypeScript 컴파일 성공
+- ✅ 빌드 성공 (`vite build`)
+- ✅ GitHub 푸시 완료
