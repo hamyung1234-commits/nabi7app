@@ -11,6 +11,8 @@ interface HeaderProps {
   onExportExcel: () => void;
   onImport: (event: React.ChangeEvent<HTMLInputElement>) => void;
   localSearchInput?: string;
+  userEmail?: string | null;
+  onProfileClick?: () => void;
 }
 
 export default function Header({
@@ -23,6 +25,8 @@ export default function Header({
   onExportExcel,
   onImport,
   localSearchInput,
+  userEmail,
+  onProfileClick,
 }: HeaderProps) {
   const formattedDate = format(parseISO(date), 'yyyy년 M월 d일 (E)', { locale: ko });
   
@@ -48,6 +52,33 @@ export default function Header({
       </div>
 
       <div className="header-right">
+        {userEmail && (
+          <button
+            onClick={onProfileClick}
+            className="btn btn-secondary btn-sm"
+            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            title="프로필 설정"
+          >
+            <span style={{
+              width: '28px',
+              height: '28px',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #1a3a5c 0%, #2d5a87 100%)',
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '12px',
+              fontWeight: 700,
+            }}>
+              {userEmail[0]?.toUpperCase()}
+            </span>
+            <span style={{ fontSize: '12px', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {userEmail.split('@')[0]}
+            </span>
+          </button>
+        )}
+
         <div className="search-box" style={{ display: 'flex', alignItems: 'center', gap: '0' }}>
           <svg
             className="search-icon"

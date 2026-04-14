@@ -1,7 +1,8 @@
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { CATEGORIES, CategoryId } from './types';
 import { useAppState } from './hooks/useLocalStorage';
-import { initSearchIndex, search, SearchItem } from './lib/searchIndex';
+import { searchFromDB, initSearchIndexFromDB, SearchItem } from './lib/searchIndex';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import MemoPage from './pages/MemoPage';
@@ -14,6 +15,8 @@ import TaskListPage from './pages/TaskListPage';
 import AccountInfoPage from './pages/AccountInfoPage';
 import DiaryPage from './pages/DiaryPage';
 import CustomerPage from './pages/CustomerPage';
+import LoginPage from './pages/LoginPage';
+import ProfilePage from './pages/ProfilePage';
 
 // 카테고리 ID 매핑
 const CATEGORY_MAP: Record<string, string> = {
@@ -29,7 +32,9 @@ const CATEGORY_MAP: Record<string, string> = {
   fee: 'fee-calculator',
 };
 
-function App() {
+// 앱 내부 컴포넌트 (AuthProvider 내부에서만 사용)
+function AppContent() {
+  const { user, loading } = useAuth();
   const {
     activeCategory,
     setActiveCategory,
@@ -43,12 +48,6 @@ function App() {
     exportData,
     exportToExcel,
     importData,
-    transactions,
-    customers,
-    companies,
-    accounts,
-    diaryEntries,
-    memos,
   } = useAppState();
 
   // 검색 입력값의 로컬 상태
@@ -57,51 +56,99 @@ function App() {
   const [showSearchResults, setShowSearchResults] = useState(false);
   // 검색 결과
   const [searchResults, setSearchResults] = useState<SearchItem[]>([]);
+  // 프로필 모드
+  const [showProfile, setShowProfile] = useState(false);
 
-  // 검색 인덱스 초기화 (앱 마운트 시 한 번만)
-  useEffect(() => {
-    initSearchIndex({
-      customers,
-      companies,
-      transactions,
-      priceChecks,
-      clientRequests,
-      accounts,
-      tasks,
-      memos,
-      diaryEntries,
-      fees: [],
-    });
-    console.log('[App] Search index initialized');
-  }, []); // 빈 의존성 - 마운트 시 한 번만 실행
+  // 로딩 중이면 로딩 화면 표시
+  if (loading) {
+    return (
+      <div style={loadingStyles.container}>
+        <div style={loadingStyles.spinner}>📋</div>
+        <p style={loadingStyles.text}>로딩 중...</p>
+      </div>
+    );
+  }
 
-  // 데이터 변경 시 인덱스 업데이트
-  useEffect(() => {
-    initSearchIndex({
-      customers,
-      companies,
-      transactions,
-      priceChecks,
-      clientRequests,
-      accounts,
-      tasks,
-      memos,
-      diaryEntries,
-      fees: [],
-    });
-  }, [customers, companies, transactions, priceChecks, clientRequests, accounts, tasks, memos, diaryEntries]);
+  // 로그인하지 않은 경우 로그인 페이지 표시
+  if (!user) {
+    return <LoginPage />;
+  }
 
-  // 검색 입력값이 변경될 때마다 실시간 검색
+  // 프로필 페이지 표시
+  if (showProfile) {
+    return (
+      <div style={profileContainerStyles}>
+        <div style={profileHeaderStyles}>
+          <button onClick={() => setShowProfile(false)} style={backButtonStyles}>
+            ← 뒤로가기
+          </button>
+          <h2 style={profileTitleStyles}>프로필 설정</h2>
+          <div style={{ width: '80px' }}></div>
+        </div>
+        <ProfilePage />
+      </div>
+    );
+  }
+
+  // Search index initialization (on mount, once)
   useEffect(() => {
+    const initSearch = async () => {
+      try {
+        await initSearchIndexFromDB();
+        console.log('[App] Search index initialized from Supabase');
+      } catch (error) {
+        console.error('[App] Failed to initialize search index:', error);
+      }
+    };
+    initSearch();
+  }, []); // Run once on mount
+
+  // Refresh search index when user logs in
+  useEffect(() => {
+    if (user) {
+      const refreshSearch = async () => {
+        try {
+          await initSearchIndexFromDB();
+          console.log('[App] Search index refreshed after login');
+        } catch (error) {
+          console.error('[App] Failed to refresh search index:', error);
+        }
+      };
+      refreshSearch();
+    }
+  }, [user]);
+
+  // Search input handler with debouncing
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Search when input changes (debounced)
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
     if (localSearchInput.trim().length >= 1) {
-      const results = search(localSearchInput);
-      console.log('[App] Search triggered:', localSearchInput, 'Results:', results.length);
-      setSearchResults(results);
-      setShowSearchResults(true);
+      searchTimeoutRef.current = setTimeout(async () => {
+        try {
+          const results = await searchFromDB(localSearchInput);
+          console.log('[App] Search triggered:', localSearchInput, 'Results:', results.length);
+          setSearchResults(results);
+          setShowSearchResults(true);
+        } catch (error) {
+          console.error('[App] Search error:', error);
+          setSearchResults([]);
+        }
+      }, 300); // 300ms debounce
     } else {
       setSearchResults([]);
       setShowSearchResults(false);
     }
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
   }, [localSearchInput]);
 
   // 검색 결과 닫기
@@ -143,12 +190,16 @@ function App() {
     setSearchQuery(query);
   }, [setSearchQuery]);
 
-  const handleSearchSubmit = useCallback(() => {
+  const handleSearchSubmit = useCallback(async () => {
     console.log('[App] handleSearchSubmit called');
     if (localSearchInput.trim()) {
-      const results = search(localSearchInput);
-      setSearchResults(results);
-      setShowSearchResults(true);
+      try {
+        const results = await searchFromDB(localSearchInput);
+        setSearchResults(results);
+        setShowSearchResults(true);
+      } catch (error) {
+        console.error('[App] Search error:', error);
+      }
     }
   }, [localSearchInput]);
 
@@ -218,6 +269,8 @@ function App() {
           onExportExcel={exportToExcel}
           onImport={handleImport}
           localSearchInput={localSearchInput}
+          userEmail={user?.email}
+          onProfileClick={() => setShowProfile(true)}
         />
         <div className="content-area">
           {renderPage()}
@@ -382,6 +435,69 @@ function getCategoryColor(category: string): string {
     '수고비계산': '#9333ea',
   };
   return colors[category] || '#1a3a5c';
+}
+
+// 로딩 스타일
+const loadingStyles: Record<string, React.CSSProperties> = {
+  container: {
+    minHeight: '100vh',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'linear-gradient(135deg, #1a3a5c 0%, #2d5a87 100%)',
+    color: 'white',
+  },
+  spinner: {
+    fontSize: '48px',
+    animation: 'pulse 1s ease-in-out infinite',
+  },
+  text: {
+    fontSize: '16px',
+    marginTop: '16px',
+  },
+};
+
+// 프로필 페이지 스타일
+const profileContainerStyles: React.CSSProperties = {
+  minHeight: '100vh',
+  background: '#f8fafc',
+};
+
+const profileHeaderStyles: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  padding: '16px 24px',
+  background: '#ffffff',
+  borderBottom: '1px solid #e2e8f0',
+  boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+};
+
+const profileTitleStyles: React.CSSProperties = {
+  fontSize: '18px',
+  fontWeight: 600,
+  color: '#1a3a5c',
+  margin: 0,
+};
+
+const backButtonStyles: React.CSSProperties = {
+  padding: '8px 16px',
+  borderRadius: '8px',
+  border: '1px solid #e2e8f0',
+  background: '#ffffff',
+  color: '#64748b',
+  fontSize: '14px',
+  cursor: 'pointer',
+};
+
+// 메인 앱 컴포넌트 (AuthProvider로 래핑)
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
 }
 
 export default App;
