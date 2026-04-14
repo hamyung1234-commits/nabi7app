@@ -6,6 +6,7 @@ interface HeaderProps {
   date: string;
   searchQuery: string;
   onSearchChange: (query: string) => void;
+  onSearch: () => void;
   onExport: () => void;
   onExportExcel: () => void;
   onImport: (event: React.ChangeEvent<HTMLInputElement>) => void;
@@ -16,11 +17,18 @@ export default function Header({
   date,
   searchQuery,
   onSearchChange,
+  onSearch,
   onExport,
   onExportExcel,
   onImport,
 }: HeaderProps) {
   const formattedDate = format(parseISO(date), 'yyyy년 M월 d일 (E)', { locale: ko });
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      onSearch();
+    }
+  };
 
   return (
     <header className="header">
@@ -30,7 +38,7 @@ export default function Header({
       </div>
 
       <div className="header-right">
-        <div className="search-box">
+        <div className="search-box" style={{ display: 'flex', alignItems: 'center', gap: '0' }}>
           <svg
             className="search-icon"
             width="16"
@@ -39,6 +47,7 @@ export default function Header({
             fill="none"
             stroke="currentColor"
             strokeWidth="2"
+            style={{ marginLeft: '12px', marginRight: '8px' }}
           >
             <circle cx="11" cy="11" r="8" />
             <path d="m21 21-4.35-4.35" />
@@ -49,7 +58,24 @@ export default function Header({
             placeholder="검색... (종목명, 고객명, 금액)"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
+            onKeyDown={handleKeyDown}
+            style={{ 
+              borderRadius: '8px 0 0 8px',
+              borderRight: 'none'
+            }}
           />
+          <button 
+            className="btn btn-primary btn-sm"
+            onClick={onSearch}
+            style={{ 
+              borderRadius: '0 8px 8px 0', 
+              padding: '8px 14px',
+              minWidth: '56px',
+              fontWeight: 600
+            }}
+          >
+            검색
+          </button>
         </div>
 
         <button className="btn btn-secondary btn-sm" onClick={onExportExcel} title="Excel 파일로 내보내기">
