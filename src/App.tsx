@@ -228,6 +228,10 @@ function App() {
   const handleSearchChange = useCallback((query: string) => {
     setLocalSearchInput(query);
     setSearchQuery(query); // localStorage에도 저장
+    // 검색어가 있으면 즉시 팝업 표시
+    if (query.trim().length >= 1) {
+      setShowSearchResults(true);
+    }
   }, [setSearchQuery]);
 
   const handleSearchSubmit = useCallback(() => {

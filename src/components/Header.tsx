@@ -60,13 +60,7 @@ export default function Header({
             className="search-input"
             placeholder="검색... (종목명, 고객명, 금액)"
             value={displayValue}
-            onChange={(e) => {
-              onSearchChange(e.target.value);
-              // 검색어가 입력되면 자동으로 결과를 표시
-              if (e.target.value.trim().length >= 1) {
-                onSearch();
-              }
-            }}
+            onChange={(e) => onSearchChange(e.target.value)}
             onKeyDown={handleKeyDown}
             style={{ 
               borderRadius: '8px 0 0 8px',
