@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
@@ -26,53 +25,19 @@ export default function Header({
   localSearchInput,
 }: HeaderProps) {
   const formattedDate = format(parseISO(date), 'yyyy년 M월 d일 (E)', { locale: ko });
+  
+  // localSearchInput이 있으면 사용, 없으면 searchQuery
   const displayValue = localSearchInput !== undefined ? localSearchInput : searchQuery;
 
-  // 입력값 로컬 관리
-  const [inputValue, setInputValue] = useState(displayValue);
-  
-  // input 요소 ref
-  const searchInputRef = useRef<HTMLInputElement>(null);
-
-  // displayValue 변경 시 inputValue 동기화
-  useEffect(() => {
-    setInputValue(displayValue);
-    if (searchInputRef.current && searchInputRef.current.value !== displayValue) {
-      searchInputRef.current.value = displayValue;
-    }
-  }, [displayValue]);
-
-  // 검색 인풋에 input 이벤트 리스너 등록 (addEventListener 방식)
-  useEffect(() => {
-    const inputElement = searchInputRef.current;
-    if (!inputElement) return;
-
-    const handleInput = (e: Event) => {
-      const target = e.target as HTMLInputElement;
-      const value = target.value;
-      setInputValue(value);
-      // React 상태 업데이트
-      onSearchChange(value);
-    };
-
-    // addEventListener로 input 이벤트 등록
-    inputElement.addEventListener('input', handleInput);
-
-    // cleanup: 이벤트 리스너 제거
-    return () => {
-      inputElement.removeEventListener('input', handleInput);
-    };
-  }, [onSearchChange]);
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    onSearchChange(value);
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       onSearch();
     }
-  };
-
-  // 검색 버튼 클릭
-  const handleSearchClick = () => {
-    onSearch();
   };
 
   return (
@@ -98,11 +63,11 @@ export default function Header({
             <path d="m21 21-4.35-4.35" />
           </svg>
           <input
-            ref={searchInputRef}
             type="text"
             className="search-input"
             placeholder="검색... (종목명, 고객명, 금액)"
-            defaultValue={displayValue}
+            value={displayValue}
+            onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             style={{ 
               borderRadius: '8px 0 0 8px',
@@ -111,7 +76,7 @@ export default function Header({
           />
           <button 
             className="btn btn-primary btn-sm"
-            onClick={handleSearchClick}
+            onClick={onSearch}
             style={{ 
               borderRadius: '0 8px 8px 0', 
               padding: '8px 14px',
