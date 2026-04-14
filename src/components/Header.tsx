@@ -10,6 +10,7 @@ interface HeaderProps {
   onExport: () => void;
   onExportExcel: () => void;
   onImport: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  localSearchInput?: string;
 }
 
 export default function Header({
@@ -21,8 +22,10 @@ export default function Header({
   onExport,
   onExportExcel,
   onImport,
+  localSearchInput,
 }: HeaderProps) {
   const formattedDate = format(parseISO(date), 'yyyy년 M월 d일 (E)', { locale: ko });
+  const displayValue = localSearchInput !== undefined ? localSearchInput : searchQuery;
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -56,8 +59,14 @@ export default function Header({
             type="text"
             className="search-input"
             placeholder="검색... (종목명, 고객명, 금액)"
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
+            value={displayValue}
+            onChange={(e) => {
+              onSearchChange(e.target.value);
+              // 검색어가 입력되면 자동으로 결과를 표시
+              if (e.target.value.trim().length >= 1) {
+                onSearch();
+              }
+            }}
             onKeyDown={handleKeyDown}
             style={{ 
               borderRadius: '8px 0 0 8px',

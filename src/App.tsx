@@ -43,12 +43,24 @@ function App() {
     diaryEntries,
   } = useAppState();
 
+  // 검색 입력값의 로컬 상태 (즉시 반응을 위해)
+  const [localSearchInput, setLocalSearchInput] = useState('');
   // 검색 결과 팝업 상태 관리
   const [showSearchResults, setShowSearchResults] = useState(false);
+
+  // 로컬 입력값이 변경될 때 검색 결과 팝업 자동 표시
+  useEffect(() => {
+    if (localSearchInput && localSearchInput.trim().length >= 1) {
+      setShowSearchResults(true);
+    } else {
+      setShowSearchResults(false);
+    }
+  }, [localSearchInput]);
 
   // 검색 결과 닫기 함수
   const closeSearchResults = useCallback(() => {
     setShowSearchResults(false);
+    setLocalSearchInput('');
     setSearchQuery('');
   }, [setSearchQuery]);
 
@@ -75,11 +87,11 @@ function App() {
     }
   };
 
-  // 전역 검색 결과
+  // 전역 검색 결과 (localSearchInput 사용으로 즉시 반응)
   const searchResults = useMemo(() => {
-    if (!searchQuery.trim()) return [];
+    if (!localSearchInput.trim()) return [];
     
-    const query = searchQuery.toLowerCase();
+    const query = localSearchInput.toLowerCase();
     const results: SearchResult[] = [];
 
     // 고객 검색
@@ -210,24 +222,19 @@ function App() {
     });
 
     return results;
-  }, [searchQuery, customers, companies, transactions, priceChecks, clientRequests, accounts, diaryEntries]);
+  }, [localSearchInput, customers, companies, transactions, priceChecks, clientRequests, accounts, diaryEntries]);
 
   // Header 컴포넌트에 전달할 검색 핸들러
   const handleSearchChange = useCallback((query: string) => {
-    setSearchQuery(query);
-    // 입력 시 자동으로 검색 결과 팝업 표시 (1글자 이상)
-    if (query.trim().length >= 1) {
-      setShowSearchResults(true);
-    } else {
-      setShowSearchResults(false);
-    }
+    setLocalSearchInput(query);
+    setSearchQuery(query); // localStorage에도 저장
   }, [setSearchQuery]);
 
   const handleSearchSubmit = useCallback(() => {
-    if (searchQuery.trim()) {
+    if (localSearchInput.trim()) {
       setShowSearchResults(true);
     }
-  }, [searchQuery]);
+  }, [localSearchInput]);
 
   const handleSearchResultClick = useCallback((result: SearchResult) => {
     // 카테고리 매핑 (type -> categoryId)
@@ -304,6 +311,7 @@ function App() {
           onExport={exportData}
           onExportExcel={exportToExcel}
           onImport={handleImport}
+          localSearchInput={localSearchInput}
         />
         <div className="content-area">
           {renderPage()}
@@ -311,7 +319,7 @@ function App() {
       </main>
 
       {/* 전역 검색 결과 팝업 */}
-      {showSearchResults && searchQuery.trim() && (
+      {showSearchResults && localSearchInput.trim() && (
         <>
           <div 
             style={{
@@ -352,7 +360,7 @@ function App() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '18px' }}>🔍</span>
                 <span style={{ fontWeight: 600, fontSize: '14px' }}>
-                  "{searchQuery}" 검색 결과 ({searchResults.length}건)
+                  "{localSearchInput}" 검색 결과 ({searchResults.length}건)
                 </span>
               </div>
               <button 
