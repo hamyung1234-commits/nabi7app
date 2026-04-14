@@ -50,11 +50,14 @@ function App() {
 
   // 로컬 입력값이 변경될 때 검색 결과 팝업 자동 표시
   useEffect(() => {
-    if (localSearchInput && localSearchInput.trim().length >= 1) {
-      setShowSearchResults(true);
-    } else {
-      setShowSearchResults(false);
-    }
+    const timer = setTimeout(() => {
+      if (localSearchInput && localSearchInput.trim().length >= 1) {
+        setShowSearchResults(true);
+      } else {
+        setShowSearchResults(false);
+      }
+    }, 50); // 짧은 딜레이로 상태 반영 보장
+    return () => clearTimeout(timer);
   }, [localSearchInput]);
 
   // 검색 결과 닫기 함수
