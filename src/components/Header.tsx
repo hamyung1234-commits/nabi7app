@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
@@ -26,6 +27,28 @@ export default function Header({
 }: HeaderProps) {
   const formattedDate = format(parseISO(date), 'yyyy년 M월 d일 (E)', { locale: ko });
   const displayValue = localSearchInput !== undefined ? localSearchInput : searchQuery;
+  
+  // input 요소 ref
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // 검색 인풋에 input 이벤트 리스너 등록 (addEventListener 방식)
+  useEffect(() => {
+    const inputElement = searchInputRef.current;
+    if (!inputElement) return;
+
+    const handleInput = (e: Event) => {
+      const target = e.target as HTMLInputElement;
+      onSearchChange(target.value);
+    };
+
+    // addEventListener로 input 이벤트 등록
+    inputElement.addEventListener('input', handleInput);
+
+    // cleanup: 이벤트 리스너 제거
+    return () => {
+      inputElement.removeEventListener('input', handleInput);
+    };
+  }, [onSearchChange]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -56,11 +79,11 @@ export default function Header({
             <path d="m21 21-4.35-4.35" />
           </svg>
           <input
+            ref={searchInputRef}
             type="text"
             className="search-input"
             placeholder="검색... (종목명, 고객명, 금액)"
-            value={displayValue}
-            onChange={(e) => onSearchChange(e.target.value)}
+            defaultValue={displayValue}
             onKeyDown={handleKeyDown}
             style={{ 
               borderRadius: '8px 0 0 8px',

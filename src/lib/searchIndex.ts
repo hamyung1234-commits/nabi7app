@@ -113,83 +113,85 @@ function createSearchItem(type: string, data: any): SearchItem {
 }
 
 /**
- * 검색 인덱스 초기화 - localStorage에서 전체 데이터 로드
+ * 검색 인덱스 초기화 - 전체 데이터 로드
  */
 export function initSearchIndex(appState: any): void {
   searchIndex = [];
 
   // 1. 고객정보
-  if (appState.customers) {
+  if (appState.customers && Array.isArray(appState.customers)) {
     appState.customers.forEach((c: any) => {
-      searchIndex.push(createSearchItem('customer', c));
+      if (c) searchIndex.push(createSearchItem('customer', c));
     });
   }
 
   // 2. 기업정보
-  if (appState.companies) {
+  if (appState.companies && Array.isArray(appState.companies)) {
     appState.companies.forEach((c: any) => {
-      searchIndex.push(createSearchItem('company', c));
+      if (c) searchIndex.push(createSearchItem('company', c));
     });
   }
 
   // 3. 거래내역
-  if (appState.transactions) {
+  if (appState.transactions && Array.isArray(appState.transactions)) {
     appState.transactions.forEach((t: any) => {
-      searchIndex.push(createSearchItem('transaction', t));
+      if (t) searchIndex.push(createSearchItem('transaction', t));
     });
   }
 
   // 4. 시세체크
-  if (appState.priceChecks) {
+  if (appState.priceChecks && Array.isArray(appState.priceChecks)) {
     appState.priceChecks.forEach((p: any) => {
-      searchIndex.push(createSearchItem('pricecheck', p));
+      if (p) searchIndex.push(createSearchItem('pricecheck', p));
     });
   }
 
   // 5. 고객의뢰
-  if (appState.clientRequests) {
+  if (appState.clientRequests && Array.isArray(appState.clientRequests)) {
     appState.clientRequests.forEach((r: any) => {
-      searchIndex.push(createSearchItem('request', r));
+      if (r) searchIndex.push(createSearchItem('request', r));
     });
   }
 
   // 6. 수고비계산
-  if (appState.fees) {
+  if (appState.fees && Array.isArray(appState.fees)) {
     appState.fees.forEach((f: any) => {
-      searchIndex.push(createSearchItem('fee', f));
+      if (f) searchIndex.push(createSearchItem('fee', f));
     });
   }
 
   // 7. 계좌정보
-  if (appState.accounts) {
+  if (appState.accounts && Array.isArray(appState.accounts)) {
     appState.accounts.forEach((a: any) => {
-      searchIndex.push(createSearchItem('account', a));
+      if (a) searchIndex.push(createSearchItem('account', a));
     });
   }
 
   // 8. 할 일 (진행리스트)
-  if (appState.tasks) {
+  if (appState.tasks && Array.isArray(appState.tasks)) {
     appState.tasks.forEach((t: any) => {
-      searchIndex.push(createSearchItem('task', t));
+      if (t) searchIndex.push(createSearchItem('task', t));
     });
   }
 
   // 9. 메모
-  if (appState.memos) {
+  if (appState.memos && Array.isArray(appState.memos)) {
     appState.memos.forEach((m: any) => {
-      searchIndex.push(createSearchItem('memo', m));
+      if (m) searchIndex.push(createSearchItem('memo', m));
     });
   }
 
   // 10. 다이어리
-  if (appState.diaryEntries) {
+  if (appState.diaryEntries && Array.isArray(appState.diaryEntries)) {
     appState.diaryEntries.forEach((d: any) => {
-      searchIndex.push(createSearchItem('diary', d));
+      if (d) searchIndex.push(createSearchItem('diary', d));
     });
   }
 
   // localStorage에 캐싱
   cacheIndex();
+  
+  console.log('[SearchIndex] Initialized with', searchIndex.length, 'items');
 }
 
 /**
@@ -202,7 +204,7 @@ export function search(query: string): SearchItem[] {
 
   const lowerQuery = query.toLowerCase().trim();
   
-  return searchIndex.filter(item => {
+  const results = searchIndex.filter(item => {
     const searchableText = [
       item.title,
       item.subtitle,
@@ -212,32 +214,13 @@ export function search(query: string): SearchItem[] {
 
     return searchableText.includes(lowerQuery);
   });
+  
+  console.log('[Search] Query:', query, 'Results:', results.length);
+  return results;
 }
 
 /**
- * 데이터 추가 시 인덱스에 자동 추가
- */
-export function addToIndex(type: string, data: any): void {
-  const item = createSearchItem(type, data);
-  const existingIndex = searchIndex.findIndex(i => i.id === item.id);
-  if (existingIndex >= 0) {
-    searchIndex[existingIndex] = item;
-  } else {
-    searchIndex.push(item);
-  }
-  cacheIndex();
-}
-
-/**
- * 데이터 삭제 시 인덱스에서 자동 제거
- */
-export function removeFromIndex(id: string): void {
-  searchIndex = searchIndex.filter(item => item.id !== id);
-  cacheIndex();
-}
-
-/**
- * 전체 인덱스 가져오기
+ * 전체 인덱스 가져오기 (디버깅용)
  */
 export function getIndex(): SearchItem[] {
   return [...searchIndex];
