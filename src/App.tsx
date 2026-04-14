@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { CATEGORIES, CategoryId } from './types';
 import { useAppState } from './hooks/useLocalStorage';
 import Sidebar from './components/Sidebar';
@@ -43,18 +43,25 @@ function App() {
     diaryEntries,
   } = useAppState();
 
+  // 검색 결과 팝업 상태 관리
   const [showSearchResults, setShowSearchResults] = useState(false);
 
-  // 검색 결과를 ESC 키로 닫기
+  // 검색 결과 닫기 함수
+  const closeSearchResults = useCallback(() => {
+    setShowSearchResults(false);
+    setSearchQuery('');
+  }, [setSearchQuery]);
+
+  // ESC 키로 검색 결과 닫기
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setShowSearchResults(false);
+      if (e.key === 'Escape' && showSearchResults) {
+        closeSearchResults();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [showSearchResults, closeSearchResults]);
 
   const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -205,7 +212,24 @@ function App() {
     return results;
   }, [searchQuery, customers, companies, transactions, priceChecks, clientRequests, accounts, diaryEntries]);
 
-  const handleSearchResultClick = (result: SearchResult) => {
+  // Header 컴포넌트에 전달할 검색 핸들러
+  const handleSearchChange = useCallback((query: string) => {
+    setSearchQuery(query);
+    // 입력 시 자동으로 검색 결과 팝업 표시 (1글자 이상)
+    if (query.trim().length >= 1) {
+      setShowSearchResults(true);
+    } else {
+      setShowSearchResults(false);
+    }
+  }, [setSearchQuery]);
+
+  const handleSearchSubmit = useCallback(() => {
+    if (searchQuery.trim()) {
+      setShowSearchResults(true);
+    }
+  }, [searchQuery]);
+
+  const handleSearchResultClick = useCallback((result: SearchResult) => {
     // 카테고리 매핑 (type -> categoryId)
     const categoryMap: Record<string, string> = {
       'customer': 'customer',
@@ -221,10 +245,9 @@ function App() {
     const categoryId = categoryMap[result.type];
     if (categoryId) {
       setActiveCategory(categoryId as CategoryId);
-      setSearchQuery('');
-      setShowSearchResults(false);
+      closeSearchResults();
     }
-  };
+  }, [setActiveCategory, closeSearchResults]);
 
   const todayCounts = useMemo(() => ({
     priceChecks: priceChecks.filter((p: any) => p.date === selectedDate).length,
@@ -276,14 +299,8 @@ function App() {
           title={currentCategory?.name || '나비'}
           date={selectedDate}
           searchQuery={searchQuery}
-          onSearchChange={(q) => {
-            setSearchQuery(q);
-            // 자동 검색: 입력과 동시에 결과 표시 (1글자 이상)
-            setShowSearchResults(q.trim().length >= 1);
-          }}
-          onSearch={() => {
-            if (searchQuery.trim()) setShowSearchResults(true);
-          }}
+          onSearchChange={handleSearchChange}
+          onSearch={handleSearchSubmit}
           onExport={exportData}
           onExportExcel={exportToExcel}
           onImport={handleImport}
@@ -306,7 +323,7 @@ function App() {
               background: 'rgba(0,0,0,0.3)',
               zIndex: 999,
             }}
-            onClick={() => setShowSearchResults(false)}
+            onClick={closeSearchResults}
           />
           <div style={{
             position: 'fixed',
@@ -339,7 +356,7 @@ function App() {
                 </span>
               </div>
               <button 
-                onClick={() => setShowSearchResults(false)}
+                onClick={closeSearchResults}
                 style={{
                   background: 'rgba(255,255,255,0.2)',
                   border: 'none',
