@@ -225,7 +225,7 @@ function App() {
       </main>
 
       {/* 전역 검색 결과 팝업 */}
-      {showSearchResults && localSearchInput.trim() && searchResults.length > 0 && (
+      {showSearchResults && localSearchInput.trim() && (
         <>
           {/* 오버레이 */}
           <div 
@@ -269,7 +269,7 @@ function App() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '18px' }}>🔍</span>
                 <span style={{ fontWeight: 600, fontSize: '14px' }}>
-                  "{localSearchInput}" 검색 결과 ({searchResults.length}건)
+                  "{localSearchInput}" 검색 결과 {searchResults.length > 0 ? `(${searchResults.length}건)` : ''}
                 </span>
               </div>
               <button 
@@ -293,48 +293,61 @@ function App() {
             </div>
             {/* 결과 목록 */}
             <div style={{ overflow: 'auto', flex: 1, maxHeight: '480px' }}>
-              {searchResults.map((result, index) => (
-                <div
-                  key={`${result.id}-${index}`}
-                  onClick={() => handleSearchResultClick(result)}
-                  style={{
-                    padding: '14px 20px',
-                    borderBottom: '1px solid #f1f5f9',
-                    cursor: 'pointer',
-                    transition: 'background 0.15s ease',
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.background = '#f8fafc';
-                    e.currentTarget.style.borderLeft = '3px solid #1a3a5c';
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.background = 'white';
-                    e.currentTarget.style.borderLeft = '3px solid transparent';
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-                    <span style={{
-                      fontSize: '10px',
-                      padding: '3px 10px',
-                      borderRadius: '12px',
-                      background: getCategoryColor(result.category),
-                      color: 'white',
-                      fontWeight: 600,
-                    }}>
-                      [{result.category}]
-                    </span>
-                    {result.date && (
-                      <span style={{ fontSize: '12px', color: '#94a3b8' }}>{result.date}</span>
-                    )}
+              {searchResults.length === 0 ? (
+                <div style={{ padding: '50px', textAlign: 'center', color: '#64748b' }}>
+                  <div style={{ fontSize: '48px', marginBottom: '12px' }}>🔎</div>
+                  <div style={{ fontSize: '14px', fontWeight: 500 }}>검색 결과가 없습니다</div>
+                  <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>
+                    고객명, 종목명, 업체명 등을 검색해보세요
                   </div>
-                  <div style={{ fontWeight: 600, color: '#1e293b', marginBottom: '3px', fontSize: '15px' }}>
-                    {result.title}
-                  </div>
-                  <div style={{ fontSize: '13px', color: '#64748b' }}>
-                    {result.subtitle}
+                  <div style={{ fontSize: '11px', color: '#cbd5e1', marginTop: '8px' }}>
+                    현재 검색 인덱스: {searchResults.length}개 항목
                   </div>
                 </div>
-              ))}
+              ) : (
+                searchResults.map((result, index) => (
+                  <div
+                    key={`${result.id}-${index}`}
+                    onClick={() => handleSearchResultClick(result)}
+                    style={{
+                      padding: '14px 20px',
+                      borderBottom: '1px solid #f1f5f9',
+                      cursor: 'pointer',
+                      transition: 'background 0.15s ease',
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.background = '#f8fafc';
+                      e.currentTarget.style.borderLeft = '3px solid #1a3a5c';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.background = 'white';
+                      e.currentTarget.style.borderLeft = '3px solid transparent';
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                      <span style={{
+                        fontSize: '10px',
+                        padding: '3px 10px',
+                        borderRadius: '12px',
+                        background: getCategoryColor(result.category),
+                        color: 'white',
+                        fontWeight: 600,
+                      }}>
+                        [{result.category}]
+                      </span>
+                      {result.date && (
+                        <span style={{ fontSize: '12px', color: '#94a3b8' }}>{result.date}</span>
+                      )}
+                    </div>
+                    <div style={{ fontWeight: 600, color: '#1e293b', marginBottom: '3px', fontSize: '15px' }}>
+                      {result.title}
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#64748b' }}>
+                      {result.subtitle}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
             {/* 푸터 */}
             <div style={{
