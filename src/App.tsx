@@ -145,6 +145,36 @@ function App() {
       }
     });
 
+    // 메모 검색
+    const memosData = localStorage.getItem('memos');
+    const memos = memosData ? JSON.parse(memosData) : [];
+    memos.forEach((m: any) => {
+      if (m.content?.toLowerCase().includes(query) || m.title?.toLowerCase().includes(query)) {
+        results.push({
+          type: 'memo',
+          title: m.title || '제목 없음',
+          subtitle: m.content?.substring(0, 50) + (m.content?.length > 50 ? '...' : ''),
+          category: '메모',
+          data: m,
+        });
+      }
+    });
+
+    // 할 일 검색
+    const tasksData = localStorage.getItem('tasks');
+    const tasksDataList = tasksData ? JSON.parse(tasksData) : [];
+    tasksDataList.forEach((t: any) => {
+      if (t.title?.toLowerCase().includes(query) || t.description?.toLowerCase().includes(query)) {
+        results.push({
+          type: 'task',
+          title: t.title,
+          subtitle: `${t.status === 'completed' ? '✅ 완료' : '📋 진행중'} | ${t.description || '설명 없음'}`,
+          category: '할 일',
+          data: t,
+        });
+      }
+    });
+
     // 계좌 검색
     accounts.forEach((a: any) => {
       if (a.bankName?.toLowerCase().includes(query) ||
@@ -176,7 +206,7 @@ function App() {
   }, [searchQuery, customers, companies, transactions, priceChecks, clientRequests, accounts, diaryEntries]);
 
   const handleSearchResultClick = (result: SearchResult) => {
-    // 해당 카테고리로 이동
+    // 카테고리 매핑 (type -> categoryId)
     const categoryMap: Record<string, string> = {
       'customer': 'customer',
       'company': 'company-info',
@@ -185,6 +215,8 @@ function App() {
       'request': 'client-requests',
       'account': 'account-info',
       'diary': 'diary',
+      'memo': 'memo',
+      'task': 'task-list',
     };
     const categoryId = categoryMap[result.type];
     if (categoryId) {
@@ -246,12 +278,8 @@ function App() {
           searchQuery={searchQuery}
           onSearchChange={(q) => {
             setSearchQuery(q);
-            // 자동 검색: 입력과 동시에 결과 표시
-            if (q.trim().length >= 1) {
-              setShowSearchResults(true);
-            } else {
-              setShowSearchResults(false);
-            }
+            // 자동 검색: 입력과 동시에 결과 표시 (1글자 이상)
+            setShowSearchResults(q.trim().length >= 1);
           }}
           onSearch={() => {
             if (searchQuery.trim()) setShowSearchResults(true);
