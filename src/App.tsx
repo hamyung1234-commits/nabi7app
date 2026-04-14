@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { CATEGORIES, CategoryId } from './types';
 import { useAppState } from './hooks/useLocalStorage';
+import { initSearchIndex, search, SearchItem } from './lib/searchIndex';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import MemoPage from './pages/MemoPage';
@@ -14,13 +15,19 @@ import AccountInfoPage from './pages/AccountInfoPage';
 import DiaryPage from './pages/DiaryPage';
 import CustomerPage from './pages/CustomerPage';
 
-interface SearchResult {
-  type: string;
-  title: string;
-  subtitle: string;
-  category: string;
-  data: any;
-}
+// 카테고리 ID 매핑
+const CATEGORY_MAP: Record<string, string> = {
+  customer: 'customer',
+  company: 'company-info',
+  transaction: 'transactions',
+  pricecheck: 'price-check',
+  request: 'client-requests',
+  account: 'account-info',
+  diary: 'diary',
+  memo: 'memo',
+  task: 'task-list',
+  fee: 'fee-calculator',
+};
 
 function App() {
   const {
@@ -41,30 +48,70 @@ function App() {
     companies,
     accounts,
     diaryEntries,
-  } = useAppState();
+    memos,
+    } = useAppState();
 
-  // 검색 입력값의 로컬 상태 (즉시 반응을 위해)
+  // 검색 입력값의 로컬 상태
   const [localSearchInput, setLocalSearchInput] = useState('');
-  // 검색 결과 팝업 상태 관리
+  // 검색 결과 팝업 상태
   const [showSearchResults, setShowSearchResults] = useState(false);
+  // 검색 결과
+  const [searchResults, setSearchResults] = useState<SearchItem[]>([]);
 
-  // 로컬 입력값이 변경될 때 검색 결과 팝업 자동 표시
+  // 검색 인덱스 초기화 (앱 마운트 시)
+  useEffect(() => {
+    initSearchIndex({
+      customers,
+      companies,
+      transactions,
+      priceChecks,
+      clientRequests,
+      accounts,
+      tasks,
+      memos,
+      diaryEntries,
+      // fees는 현재 state에 없으므로 빈 배열
+      fees: [],
+    });
+  }, [customers, companies, transactions, priceChecks, clientRequests, accounts, tasks, memos, diaryEntries]);
+
+  // 검색 인덱스 자동 동기화 - 데이터 변경 시마다 인덱스 업데이트
+  useEffect(() => {
+    initSearchIndex({
+      customers,
+      companies,
+      transactions,
+      priceChecks,
+      clientRequests,
+      accounts,
+      tasks,
+      memos,
+      diaryEntries,
+      fees: [],
+    });
+  }, [customers, companies, transactions, priceChecks, clientRequests, accounts, tasks, memos, diaryEntries]);
+
+  // 검색 입력값이 변경될 때마다 실시간 검색 (input 이벤트 리스너 방식)
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (localSearchInput && localSearchInput.trim().length >= 1) {
+      if (localSearchInput.trim().length >= 1) {
+        const results = search(localSearchInput);
+        setSearchResults(results);
         setShowSearchResults(true);
       } else {
+        setSearchResults([]);
         setShowSearchResults(false);
       }
-    }, 50); // 짧은 딜레이로 상태 반영 보장
+    }, 50);
     return () => clearTimeout(timer);
   }, [localSearchInput]);
 
-  // 검색 결과 닫기 함수
+  // 검색 결과 닫기
   const closeSearchResults = useCallback(() => {
     setShowSearchResults(false);
     setLocalSearchInput('');
     setSearchQuery('');
+    setSearchResults([]);
   }, [setSearchQuery]);
 
   // ESC 키로 검색 결과 닫기
@@ -78,6 +125,7 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showSearchResults, closeSearchResults]);
 
+  // 데이터 가져오기 핸들러
   const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -90,173 +138,23 @@ function App() {
     }
   };
 
-  // 전역 검색 결과 (localSearchInput 사용으로 즉시 반응)
-  const searchResults = useMemo(() => {
-    if (!localSearchInput.trim()) return [];
-    
-    const query = localSearchInput.toLowerCase();
-    const results: SearchResult[] = [];
-
-    // 고객 검색
-    customers.forEach((c: any) => {
-      if (c.name?.toLowerCase().includes(query) || 
-          c.contact?.includes(query) ||
-          c.interestedStocks?.toLowerCase().includes(query)) {
-        results.push({
-          type: 'customer',
-          title: c.name,
-          subtitle: `${c.customerType === 'seller' ? '매도' : c.customerType === 'buyer' ? '매수' : '양방향'} | ${c.contact}`,
-          category: '고객정보',
-          data: c,
-        });
-      }
-    });
-
-    // 기업/종목 검색
-    companies.forEach((c: any) => {
-      if (c.stockName?.toLowerCase().includes(query)) {
-        results.push({
-          type: 'company',
-          title: c.stockName,
-          subtitle: `${c.industry} | 시세: ${c.currentPrice?.toLocaleString()}원`,
-          category: '기업정보',
-          data: c,
-        });
-      }
-    });
-
-    // 거래내역 검색
-    transactions.forEach((t: any) => {
-      if (t.stockName?.toLowerCase().includes(query) || 
-          t.customerName?.toLowerCase().includes(query)) {
-        results.push({
-          type: 'transaction',
-          title: t.stockName,
-          subtitle: `${t.date} | ${t.customerName} | ${t.sellTotal?.toLocaleString()}원`,
-          category: '거래내역',
-          data: t,
-        });
-      }
-    });
-
-    // 시세체크 검색
-    priceChecks.forEach((p: any) => {
-      if (p.stockName?.toLowerCase().includes(query) ||
-          p.holderCompany?.toLowerCase().includes(query)) {
-        results.push({
-          type: 'pricecheck',
-          title: p.stockName,
-          subtitle: `${p.date} | ${p.holderCompany}`,
-          category: '시세체크',
-          data: p,
-        });
-      }
-    });
-
-    // 고객 의뢰 검색
-    clientRequests.forEach((r: any) => {
-      if (r.clientName?.toLowerCase().includes(query) ||
-          r.targetStock?.toLowerCase().includes(query)) {
-        results.push({
-          type: 'request',
-          title: r.targetStock,
-          subtitle: `${r.clientName} | ${r.requestType === 'buy' ? '매수' : '매도'} | ${r.quantity}주`,
-          category: '고객의뢰',
-          data: r,
-        });
-      }
-    });
-
-    // 메모 검색
-    const memosData = localStorage.getItem('memos');
-    const memos = memosData ? JSON.parse(memosData) : [];
-    memos.forEach((m: any) => {
-      if (m.content?.toLowerCase().includes(query) || m.title?.toLowerCase().includes(query)) {
-        results.push({
-          type: 'memo',
-          title: m.title || '제목 없음',
-          subtitle: m.content?.substring(0, 50) + (m.content?.length > 50 ? '...' : ''),
-          category: '메모',
-          data: m,
-        });
-      }
-    });
-
-    // 할 일 검색
-    const tasksData = localStorage.getItem('tasks');
-    const tasksDataList = tasksData ? JSON.parse(tasksData) : [];
-    tasksDataList.forEach((t: any) => {
-      if (t.title?.toLowerCase().includes(query) || t.description?.toLowerCase().includes(query)) {
-        results.push({
-          type: 'task',
-          title: t.title,
-          subtitle: `${t.status === 'completed' ? '✅ 완료' : '📋 진행중'} | ${t.description || '설명 없음'}`,
-          category: '할 일',
-          data: t,
-        });
-      }
-    });
-
-    // 계좌 검색
-    accounts.forEach((a: any) => {
-      if (a.bankName?.toLowerCase().includes(query) ||
-          a.accountHolder?.toLowerCase().includes(query)) {
-        results.push({
-          type: 'account',
-          title: a.bankName,
-          subtitle: `${a.accountNumber} | ${a.accountHolder}`,
-          category: '계좌정보',
-          data: a,
-        });
-      }
-    });
-
-    // 다이어리 검색
-    diaryEntries.forEach((d: any) => {
-      if (d.content?.toLowerCase().includes(query)) {
-        results.push({
-          type: 'diary',
-          title: d.date,
-          subtitle: d.content.substring(0, 50) + (d.content.length > 50 ? '...' : ''),
-          category: '다이어리',
-          data: d,
-        });
-      }
-    });
-
-    return results;
-  }, [localSearchInput, customers, companies, transactions, priceChecks, clientRequests, accounts, diaryEntries]);
-
-  // Header 컴포넌트에 전달할 검색 핸들러
+  // Header에 전달할 검색 핸들러 (input 이벤트 방식)
   const handleSearchChange = useCallback((query: string) => {
     setLocalSearchInput(query);
-    setSearchQuery(query); // localStorage에도 저장
-    // 검색어가 있으면 즉시 팝업 표시
-    if (query.trim().length >= 1) {
-      setShowSearchResults(true);
-    }
+    setSearchQuery(query);
   }, [setSearchQuery]);
 
   const handleSearchSubmit = useCallback(() => {
     if (localSearchInput.trim()) {
+      const results = search(localSearchInput);
+      setSearchResults(results);
       setShowSearchResults(true);
     }
   }, [localSearchInput]);
 
-  const handleSearchResultClick = useCallback((result: SearchResult) => {
-    // 카테고리 매핑 (type -> categoryId)
-    const categoryMap: Record<string, string> = {
-      'customer': 'customer',
-      'company': 'company-info',
-      'transaction': 'transactions',
-      'pricecheck': 'price-check',
-      'request': 'client-requests',
-      'account': 'account-info',
-      'diary': 'diary',
-      'memo': 'memo',
-      'task': 'task-list',
-    };
-    const categoryId = categoryMap[result.type];
+  // 검색 결과 클릭 시 카테고리로 이동
+  const handleSearchResultClick = useCallback((result: SearchItem) => {
+    const categoryId = CATEGORY_MAP[result.type];
     if (categoryId) {
       setActiveCategory(categoryId as CategoryId);
       closeSearchResults();
@@ -325,9 +223,10 @@ function App() {
         </div>
       </main>
 
-      {/* 전역 검색 결과 팝업 */}
+      {/* 전역 검색 결과 팝업 - searchIndex 기반 */}
       {showSearchResults && localSearchInput.trim() && (
         <>
+          {/* 오버레이 */}
           <div 
             style={{
               position: 'fixed',
@@ -340,12 +239,13 @@ function App() {
             }}
             onClick={closeSearchResults}
           />
+          {/* 검색 결과 드롭다운 */}
           <div style={{
             position: 'fixed',
             top: '70px',
             right: '20px',
-            width: '500px',
-            maxHeight: '550px',
+            width: '520px',
+            maxHeight: '580px',
             background: '#ffffff',
             borderRadius: '16px',
             boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
@@ -355,6 +255,7 @@ function App() {
             flexDirection: 'column',
             border: '2px solid #e2e8f0',
           }}>
+            {/* 헤더 */}
             <div style={{
               padding: '16px 20px',
               borderBottom: '2px solid #e2e8f0',
@@ -389,12 +290,13 @@ function App() {
                 ✕
               </button>
             </div>
-            <div style={{ overflow: 'auto', flex: 1, maxHeight: '450px' }}>
+            {/* 결과 목록 */}
+            <div style={{ overflow: 'auto', flex: 1, maxHeight: '480px' }}>
               {searchResults.length === 0 ? (
                 <div style={{ padding: '50px', textAlign: 'center', color: '#64748b' }}>
                   <div style={{ fontSize: '48px', marginBottom: '12px' }}>🔎</div>
                   <div style={{ fontSize: '14px', fontWeight: 500 }}>검색 결과가 없습니다</div>
-                  <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>다른 검색어를 입력해보세요</div>
+                  <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>고객명, 종목명, 업체명 등을 검색해보세요</div>
                 </div>
               ) : (
                 searchResults.map((result, index) => (
@@ -421,13 +323,15 @@ function App() {
                         fontSize: '10px',
                         padding: '3px 10px',
                         borderRadius: '12px',
-                        background: '#1a3a5c',
+                        background: getCategoryColor(result.category),
                         color: 'white',
                         fontWeight: 600,
                       }}>
-                        {result.category}
+                        [{result.category}]
                       </span>
-                      <span style={{ fontSize: '12px', color: '#94a3b8' }}>{result.type}</span>
+                      {result.date && (
+                        <span style={{ fontSize: '12px', color: '#94a3b8' }}>{result.date}</span>
+                      )}
                     </div>
                     <div style={{ fontWeight: 600, color: '#1e293b', marginBottom: '3px', fontSize: '15px' }}>
                       {result.title}
@@ -439,6 +343,7 @@ function App() {
                 ))
               )}
             </div>
+            {/* 푸터 */}
             <div style={{
               padding: '12px 20px',
               background: '#f8fafc',
@@ -454,6 +359,23 @@ function App() {
       )}
     </div>
   );
+}
+
+// 카테고리별 색상
+function getCategoryColor(category: string): string {
+  const colors: Record<string, string> = {
+    '고객정보': '#059669',
+    '기업정보': '#7c3aed',
+    '거래내역': '#2563eb',
+    '시세체크': '#ea580c',
+    '고객의뢰': '#dc2626',
+    '계좌정보': '#0891b2',
+    '진행리스트': '#ca8a04',
+    '메모': '#4f46e5',
+    '다이어리': '#65a30d',
+    '수고비계산': '#9333ea',
+  };
+  return colors[category] || '#1a3a5c';
 }
 
 export default App;
