@@ -1,18 +1,52 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useAppState } from '../hooks/useLocalStorage';
 import { generateId, CATEGORIES } from '../types';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
+import { useCounts } from '../contexts/CountContext';
 
-export default function DiaryPage() {
+// Props for search navigation
+interface DiaryPageProps {
+  selectedItemId?: string | null;
+  selectedItemType?: string | null;
+  highlightedItemId?: string | null;
+  onClearSelection?: () => void;
+}
+
+export default function DiaryPage({ selectedItemId, selectedItemType, highlightedItemId, onClearSelection }: DiaryPageProps = {}) {
   const { diaryEntries, setDiaryEntries, searchQuery } = useAppState();
+  const { incrementCount, decrementCount } = useCounts();
   const [showForm, setShowForm] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selectedEntry, setSelectedEntry] = useState<any | null>(null);
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     content: '',
     tags: [] as string[],
   });
+
+  // 검색에서 자동 선택 처리
+  const hasAutoSelectedRef = useRef(false);
+
+  // Handle selected item from search
+  useEffect(() => {
+    if (selectedItemId && selectedItemType === 'diary' && !hasAutoSelectedRef.current) {
+      console.log('[DiaryPage] Auto-selecting diary entry:', selectedItemId);
+      hasAutoSelectedRef.current = true;
+      
+      const entry = diaryEntries.find((d: any) => d.id === selectedItemId);
+      if (entry) {
+        setSelectedEntry(entry);
+      }
+      
+      if (onClearSelection) {
+        setTimeout(() => {
+          onClearSelection();
+          hasAutoSelectedRef.current = false;
+        }, 100);
+      }
+    }
+  }, [selectedItemId, selectedItemType, diaryEntries, onClearSelection]);
 
   const filteredEntries = useMemo(() => {
     let filtered = [...diaryEntries];
@@ -45,12 +79,17 @@ export default function DiaryPage() {
       updatedAt: new Date().toISOString(),
     };
     setDiaryEntries((prev: any) => [...prev, newEntry]);
+    incrementCount('diary');
     setFormData({ date: new Date().toISOString().split('T')[0], content: '', tags: [] });
     setShowForm(false);
   };
 
   const handleDelete = (id: string) => {
     setDiaryEntries((prev: any) => prev.filter((d: any) => d.id !== id));
+    decrementCount('diary');
+    if (selectedEntry?.id === id) {
+      setSelectedEntry(null);
+    }
   };
 
   const toggleTag = (tag: string) => {
@@ -60,6 +99,88 @@ export default function DiaryPage() {
   };
 
   const categoryTags = CATEGORIES.map(c => c.id);
+
+  // 하이라이트 스타일
+  const getRowStyle = (item: any) => {
+    if (highlightedItemId && item.id === highlightedItemId) {
+      return {
+        background: '#FFF9C4',
+        transition: 'background 0.3s ease'
+      };
+    }
+    return {};
+  };
+
+  // 상세 모달
+  const renderDetail = () => {
+    if (!selectedEntry) return null;
+
+    return (
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ background: 'var(--color-bg-card)', borderRadius: 'var(--radius-lg)', width: '90%', maxWidth: '700px', maxHeight: '90vh', overflow: 'auto', padding: 'var(--spacing-lg)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-lg)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+              <span style={{ fontSize: '24px' }}>📝</span>
+              <div>
+                <h2 style={{ fontSize: 'var(--font-xl)', marginBottom: '4px' }}>
+                  {format(parseISO(selectedEntry.date), 'yyyy년 M월 d일 (E)', { locale: ko })}
+                </h2>
+              </div>
+            </div>
+            <button className="btn btn-secondary btn-sm" onClick={() => setSelectedEntry(null)}>✕ 닫기</button>
+          </div>
+
+          {/* 태그 */}
+          {selectedEntry.tags && selectedEntry.tags.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-xs)', marginBottom: 'var(--spacing-lg)' }}>
+              {selectedEntry.tags.map((tag: string) => {
+                const category = CATEGORIES.find(c => c.id === tag);
+                return (
+                  <span
+                    key={tag}
+                    style={{
+                      padding: '4px 12px',
+                      background: category?.color || '#6b7280',
+                      borderRadius: '9999px',
+                      fontSize: 'var(--font-xs)',
+                      color: 'white',
+                    }}
+                  >
+                    {category?.icon} {category?.name}
+                  </span>
+                );
+              })}
+            </div>
+          )}
+
+          {/* 내용 */}
+          <div style={{ 
+            padding: 'var(--spacing-lg)', 
+            background: 'var(--color-bg-input)', 
+            borderRadius: 'var(--radius-md)',
+            marginBottom: 'var(--spacing-lg)'
+          }}>
+            <p style={{ whiteSpace: 'pre-wrap', lineHeight: 1.8, fontSize: 'var(--font-md)' }}>
+              {selectedEntry.content}
+            </p>
+          </div>
+
+          {/* 메타 정보 */}
+          <div style={{ fontSize: 'var(--font-sm)', color: 'var(--color-text-muted)', marginBottom: 'var(--spacing-lg)' }}>
+            <div>작성일: {format(new Date(selectedEntry.createdAt), 'yyyy년 M월 d일 HH:mm')}</div>
+            {selectedEntry.updatedAt && selectedEntry.updatedAt !== selectedEntry.createdAt && (
+              <div>수정일: {format(new Date(selectedEntry.updatedAt), 'yyyy년 M월 d일 HH:mm')}</div>
+            )}
+          </div>
+
+          <div style={{ marginTop: 'var(--spacing-lg)', display: 'flex', gap: 'var(--spacing-sm)', justifyContent: 'flex-end' }}>
+            <button className="btn btn-danger btn-sm" onClick={() => handleDelete(selectedEntry.id)}>삭제</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => setSelectedEntry(null)}>닫기</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div>
@@ -147,9 +268,23 @@ export default function DiaryPage() {
             {filteredEntries.map((entry: any) => (
               <div
                 key={entry.id}
+                onClick={() => setSelectedEntry(entry)}
                 style={{
                   padding: 'var(--spacing-lg)',
                   borderBottom: '1px solid var(--color-border)',
+                  cursor: 'pointer',
+                  transition: 'background 0.15s ease',
+                  ...getRowStyle(entry)
+                }}
+                onMouseOver={(e) => {
+                  if (!highlightedItemId || entry.id !== highlightedItemId) {
+                    e.currentTarget.style.background = 'var(--color-bg-input)';
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (!highlightedItemId || entry.id !== highlightedItemId) {
+                    e.currentTarget.style.background = 'transparent';
+                  }
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--spacing-sm)' }}>
@@ -178,13 +313,16 @@ export default function DiaryPage() {
                 </div>
                 <p style={{ whiteSpace: 'pre-wrap', lineHeight: 1.8 }}>{entry.content}</p>
                 <div style={{ marginTop: 'var(--spacing-sm)', display: 'flex', justifyContent: 'flex-end' }}>
-                  <button className="btn btn-secondary btn-sm" onClick={() => handleDelete(entry.id)}>삭제</button>
+                  <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); handleDelete(entry.id); }}>삭제</button>
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* 상세 모달 */}
+      {renderDetail()}
     </div>
   );
 }

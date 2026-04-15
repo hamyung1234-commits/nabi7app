@@ -1,7 +1,14 @@
 import { useState, useMemo } from 'react';
 import { formatCurrency } from '../types';
 
-export default function FeeCalculatorPage() {
+// Props for search navigation (fee calculator doesn't have individual items to select)
+interface FeeCalculatorPageProps {
+  selectedItemId?: string | null;
+  selectedItemType?: string | null;
+  onClearSelection?: () => void;
+}
+
+export default function FeeCalculatorPage(_props: FeeCalculatorPageProps = {}) {
   const [formData, setFormData] = useState({
     buyPrice: '',
     sellPrice: '',

@@ -1,11 +1,45 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useAppState } from '../hooks/useLocalStorage';
 import { CATEGORIES, generateId } from '../types';
+import { useCounts } from '../contexts/CountContext';
 
-export default function MemoPage() {
+// Props for search navigation
+interface MemoPageProps {
+  selectedItemId?: string | null;
+  selectedItemType?: string | null;
+  highlightedItemId?: string | null;
+  onClearSelection?: () => void;
+}
+
+export default function MemoPage({ selectedItemId, selectedItemType, highlightedItemId, onClearSelection }: MemoPageProps = {}) {
   const { memos, setMemos, priceChecks, clientRequests, selectedDate } = useAppState();
+  const { incrementCount, decrementCount } = useCounts();
   const [memoContent, setMemoContent] = useState('');
   const [autoClassified, setAutoClassified] = useState<{ category: string; items: string[] } | null>(null);
+  const [selectedMemo, setSelectedMemo] = useState<any | null>(null);
+
+  // 검색에서 자동 선택 처리
+  const hasAutoSelectedRef = useRef(false);
+
+  // Handle selected item from search
+  useEffect(() => {
+    if (selectedItemId && selectedItemType === 'memo' && !hasAutoSelectedRef.current) {
+      console.log('[MemoPage] Auto-selecting memo:', selectedItemId);
+      hasAutoSelectedRef.current = true;
+      
+      const memo = memos.find((m: any) => m.id === selectedItemId);
+      if (memo) {
+        setSelectedMemo(memo);
+      }
+      
+      if (onClearSelection) {
+        setTimeout(() => {
+          onClearSelection();
+          hasAutoSelectedRef.current = false;
+        }, 100);
+      }
+    }
+  }, [selectedItemId, selectedItemType, memos, onClearSelection]);
 
   const filteredMemos = useMemo(() => {
     return memos.filter(m => m.date === selectedDate);
@@ -50,12 +84,83 @@ export default function MemoPage() {
       updatedAt: new Date().toISOString(),
     };
     setMemos((prev: any) => [...prev, newMemo]);
+    incrementCount('memo');
     setMemoContent('');
     setAutoClassified(null);
   };
 
   const handleDeleteMemo = (id: string) => {
     setMemos((prev: any) => prev.filter((m: any) => m.id !== id));
+    decrementCount('memo');
+    if (selectedMemo?.id === id) {
+      setSelectedMemo(null);
+    }
+  };
+
+  // 상세 모달
+  const renderDetail = () => {
+    if (!selectedMemo) return null;
+    const category = CATEGORIES.find(c => c.id === selectedMemo.category);
+
+    return (
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ background: 'var(--color-bg-card)', borderRadius: 'var(--radius-lg)', width: '90%', maxWidth: '700px', maxHeight: '90vh', overflow: 'auto', padding: 'var(--spacing-lg)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-lg)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+              <span style={{ 
+                padding: '4px 12px', 
+                background: category?.color || '#6b7280', 
+                borderRadius: '9999px', 
+                fontSize: 'var(--font-xs)', 
+                color: 'white' 
+              }}>
+                {category?.icon} {category?.name}
+              </span>
+              <span style={{ fontSize: 'var(--font-sm)', color: 'var(--color-text-muted)' }}>
+                {selectedMemo.date}
+              </span>
+            </div>
+            <button className="btn btn-secondary btn-sm" onClick={() => setSelectedMemo(null)}>✕ 닫기</button>
+          </div>
+
+          {/* 내용 */}
+          <div style={{ 
+            padding: 'var(--spacing-lg)', 
+            background: 'var(--color-bg-input)', 
+            borderRadius: 'var(--radius-md)',
+            marginBottom: 'var(--spacing-lg)'
+          }}>
+            <p style={{ whiteSpace: 'pre-wrap', lineHeight: 1.8, fontSize: 'var(--font-md)' }}>
+              {selectedMemo.content}
+            </p>
+          </div>
+
+          {/* 메타 정보 */}
+          <div style={{ fontSize: 'var(--font-sm)', color: 'var(--color-text-muted)', marginBottom: 'var(--spacing-lg)' }}>
+            <div>작성일: {new Date(selectedMemo.createdAt).toLocaleString('ko-KR')}</div>
+            {selectedMemo.updatedAt && selectedMemo.updatedAt !== selectedMemo.createdAt && (
+              <div>수정일: {new Date(selectedMemo.updatedAt).toLocaleString('ko-KR')}</div>
+            )}
+          </div>
+
+          <div style={{ marginTop: 'var(--spacing-lg)', display: 'flex', gap: 'var(--spacing-sm)', justifyContent: 'flex-end' }}>
+            <button className="btn btn-danger btn-sm" onClick={() => handleDeleteMemo(selectedMemo.id)}>삭제</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => setSelectedMemo(null)}>닫기</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // 하이라이트 스타일
+  const getRowStyle = (item: any) => {
+    if (highlightedItemId && item.id === highlightedItemId) {
+      return {
+        background: '#FFF9C4',
+        transition: 'background 0.3s ease'
+      };
+    }
+    return {};
   };
 
   return (
@@ -135,7 +240,29 @@ export default function MemoPage() {
             {filteredMemos.map((memo: any) => {
               const category = CATEGORIES.find(c => c.id === memo.category);
               return (
-                <div key={memo.id} style={{ padding: 'var(--spacing-md)', borderBottom: '1px solid var(--color-border)', display: 'flex', gap: 'var(--spacing-md)' }}>
+                <div 
+                  key={memo.id} 
+                  onClick={() => setSelectedMemo(memo)}
+                  style={{ 
+                    padding: 'var(--spacing-md)', 
+                    borderBottom: '1px solid var(--color-border)', 
+                    display: 'flex', 
+                    gap: 'var(--spacing-md)',
+                    cursor: 'pointer',
+                    transition: 'background 0.15s ease',
+                    ...getRowStyle(memo)
+                  }}
+                  onMouseOver={(e) => {
+                    if (!highlightedItemId || memo.id !== highlightedItemId) {
+                      e.currentTarget.style.background = 'var(--color-bg-input)';
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    if (!highlightedItemId || memo.id !== highlightedItemId) {
+                      e.currentTarget.style.background = 'transparent';
+                    }
+                  }}
+                >
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-xs)' }}>
                       <span style={{ padding: '2px 8px', background: category?.color || '#6b7280', borderRadius: '9999px', fontSize: 'var(--font-xs)', color: 'white' }}>
@@ -144,13 +271,16 @@ export default function MemoPage() {
                     </div>
                     <p style={{ whiteSpace: 'pre-wrap' }}>{memo.content}</p>
                   </div>
-                  <button className="btn btn-secondary btn-sm" onClick={() => handleDeleteMemo(memo.id)} style={{ alignSelf: 'flex-start' }}>삭제</button>
+                  <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); handleDeleteMemo(memo.id); }} style={{ alignSelf: 'flex-start' }}>삭제</button>
                 </div>
               );
             })}
           </div>
         )}
       </div>
+
+      {/* 상세 모달 */}
+      {renderDetail()}
     </div>
   );
 }

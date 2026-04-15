@@ -1,8 +1,7 @@
-import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { CATEGORIES, CategoryId } from './types';
 import { useAppState } from './hooks/useLocalStorage';
 import { searchFromDB, initSearchIndexFromDB, SearchItem } from './lib/searchIndex';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import MemoPage from './pages/MemoPage';
@@ -15,8 +14,7 @@ import TaskListPage from './pages/TaskListPage';
 import AccountInfoPage from './pages/AccountInfoPage';
 import DiaryPage from './pages/DiaryPage';
 import CustomerPage from './pages/CustomerPage';
-import LoginPage from './pages/LoginPage';
-import ProfilePage from './pages/ProfilePage';
+import { CountProvider, useSidebarCounts } from './contexts/CountContext';
 
 // 카테고리 ID 매핑
 const CATEGORY_MAP: Record<string, string> = {
@@ -32,23 +30,30 @@ const CATEGORY_MAP: Record<string, string> = {
   fee: 'fee-calculator',
 };
 
-// 앱 내부 컴포넌트 (AuthProvider 내부에서만 사용)
 function AppContent() {
-  const { user, loading } = useAuth();
   const {
     activeCategory,
     setActiveCategory,
     selectedDate,
     setSelectedDate,
-    priceChecks,
-    clientRequests,
-    tasks,
     searchQuery,
     setSearchQuery,
     exportData,
     exportToExcel,
     importData,
+    selectedItemId,
+    selectedItemType,
+    setSelectedItemId,
+    setSelectedItemType,
+    clearSelectedItem,
   } = useAppState();
+
+  // Get counts from CountProvider for sidebar
+  const computedCounts = useSidebarCounts();
+
+  // 하이라이트 상태 (검색 결과에서 선택된 항목 강조 표시)
+  const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
+  const highlightTimeoutRef = useRef<number | null>(null);
 
   // 검색 입력값의 로컬 상태
   const [localSearchInput, setLocalSearchInput] = useState('');
@@ -56,39 +61,9 @@ function AppContent() {
   const [showSearchResults, setShowSearchResults] = useState(false);
   // 검색 결과
   const [searchResults, setSearchResults] = useState<SearchItem[]>([]);
-  // 프로필 모드
-  const [showProfile, setShowProfile] = useState(false);
 
-  // 로딩 중이면 로딩 화면 표시
-  if (loading) {
-    return (
-      <div style={loadingStyles.container}>
-        <div style={loadingStyles.spinner}>📋</div>
-        <p style={loadingStyles.text}>로딩 중...</p>
-      </div>
-    );
-  }
-
-  // 로그인하지 않은 경우 로그인 페이지 표시
-  if (!user) {
-    return <LoginPage />;
-  }
-
-  // 프로필 페이지 표시
-  if (showProfile) {
-    return (
-      <div style={profileContainerStyles}>
-        <div style={profileHeaderStyles}>
-          <button onClick={() => setShowProfile(false)} style={backButtonStyles}>
-            ← 뒤로가기
-          </button>
-          <h2 style={profileTitleStyles}>프로필 설정</h2>
-          <div style={{ width: '80px' }}></div>
-        </div>
-        <ProfilePage />
-      </div>
-    );
-  }
+  // Track previous category to detect navigation
+  const prevCategoryRef = useRef<string>(activeCategory);
 
   // Search index initialization (on mount, once)
   useEffect(() => {
@@ -101,57 +76,50 @@ function AppContent() {
       }
     };
     initSearch();
-  }, []); // Run once on mount
+  }, []);
 
-  // Refresh search index when user logs in
+  // When category changes, clear the selected item after it's been processed
   useEffect(() => {
-    if (user) {
-      const refreshSearch = async () => {
-        try {
-          await initSearchIndexFromDB();
-          console.log('[App] Search index refreshed after login');
-        } catch (error) {
-          console.error('[App] Failed to refresh search index:', error);
-        }
-      };
-      refreshSearch();
+    if (prevCategoryRef.current !== activeCategory) {
+      prevCategoryRef.current = activeCategory;
     }
-  }, [user]);
+  }, [activeCategory]);
 
-  // Search input handler with debouncing
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // 검색 진행 중 상태
+  const [isSearching, setIsSearching] = useState(false);
+  // 디버그 로그 보기
+  const [debugInfo, setDebugInfo] = useState<string>('');
 
   // Search when input changes (debounced)
   useEffect(() => {
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-
-    if (localSearchInput.trim().length >= 1) {
-      searchTimeoutRef.current = setTimeout(async () => {
+    if (localSearchInput.length >= 1) {
+      setDebugInfo(`"${localSearchInput}" 검색 중...`);
+      const timer = setTimeout(async () => {
+        setIsSearching(true);
+        console.log('[App] Starting search for:', localSearchInput);
         try {
           const results = await searchFromDB(localSearchInput);
-          console.log('[App] Search triggered:', localSearchInput, 'Results:', results.length);
+          console.log('[App] Search completed. Results:', results.length);
           setSearchResults(results);
           setShowSearchResults(true);
+          setDebugInfo(`"${localSearchInput}" 검색 결과: ${results.length}건`);
         } catch (error) {
           console.error('[App] Search error:', error);
           setSearchResults([]);
+          setDebugInfo(`검색 오류: ${error}`);
+        } finally {
+          setIsSearching(false);
         }
-      }, 300); // 300ms debounce
+      }, 300);
+      return () => clearTimeout(timer);
     } else {
       setSearchResults([]);
       setShowSearchResults(false);
+      setDebugInfo('');
     }
-
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
   }, [localSearchInput]);
 
-  // 검색 결과 닫기
+  // 검색 결과 닫기 (검색 UI만 닫음 - 선택된 항목은 유지)
   const closeSearchResults = useCallback(() => {
     setShowSearchResults(false);
     setLocalSearchInput('');
@@ -203,46 +171,78 @@ function AppContent() {
     }
   }, [localSearchInput]);
 
-  // 검색 결과 클릭 시 카테고리로 이동
+  // 검색 결과 클릭 시 카테고리로 이동하고 해당 항목 선택 + 하이라이트
   const handleSearchResultClick = useCallback((result: SearchItem) => {
-    console.log('[App] Result clicked:', result.title);
+    console.log('[App] Result clicked:', result.title, 'Type:', result.type, 'OriginalID:', result.originalId);
+    
+    // Use originalId which is the actual UUID from the database
+    const itemId = result.originalId || result.id.split('-').slice(1).join('-');
+    console.log('[App] Using itemId:', itemId);
+    
+    // Set selected item ID and type BEFORE navigating
+    setSelectedItemId(itemId);
+    setSelectedItemType(result.type);
+    
+    // Navigate to the category
     const categoryId = CATEGORY_MAP[result.type];
     if (categoryId) {
+      console.log('[App] Navigating to category:', categoryId);
       setActiveCategory(categoryId as CategoryId);
-      closeSearchResults();
+      
+      // 2초간 하이라이트 설정
+      setHighlightedItemId(itemId);
+      
+      // 기존 타이머をクリア
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current);
+      }
+      
+      // 2초 후 하이라이트 제거
+      highlightTimeoutRef.current = window.setTimeout(() => {
+        setHighlightedItemId(null);
+      }, 2000);
+    } else {
+      console.warn('[App] No category mapping for type:', result.type);
     }
-  }, [setActiveCategory, closeSearchResults]);
+    
+    // Close search popup
+    setShowSearchResults(false);
+    setLocalSearchInput('');
+    setSearchResults([]);
+  }, [setSelectedItemId, setSelectedItemType, setActiveCategory]);
 
-  const todayCounts = useMemo(() => ({
-    priceChecks: priceChecks.filter((p: any) => p.date === selectedDate).length,
-    clientRequests: clientRequests.filter((c: any) => c.status === 'in-progress').length,
-    tasks: tasks.filter((t: any) => t.status !== 'completed').length,
-  }), [priceChecks, clientRequests, tasks, selectedDate]);
-
+  // Render page with selected item props
   const renderPage = () => {
+    const pageProps = {
+      selectedItemId,
+      selectedItemType,
+      highlightedItemId,
+      onClearSelection: clearSelectedItem,
+    };
+
     switch (activeCategory as string) {
       case 'memo':
-        return <MemoPage />;
+        return <MemoPage {...pageProps} />;
       case 'price-check':
-        return <PriceCheckPage />;
+        return <PriceCheckPage {...pageProps} />;
       case 'client-requests':
-        return <ClientRequestsPage />;
+        return <ClientRequestsPage {...pageProps} />;
       case 'company-info':
-        return <CompanyInfoPage />;
+        return <CompanyInfoPage {...pageProps} />;
       case 'fee-calculator':
-        return <FeeCalculatorPage />;
+        return <FeeCalculatorPage {...pageProps} />;
       case 'transactions':
-        return <TransactionPage />;
+        return <TransactionPage {...pageProps} />;
       case 'task-list':
-        return <TaskListPage />;
+        return <TaskListPage {...pageProps} />;
       case 'account-info':
-        return <AccountInfoPage />;
+        return <AccountInfoPage {...pageProps} />;
       case 'diary':
-        return <DiaryPage />;
+        return <DiaryPage {...pageProps} />;
       case 'customer':
-        return <CustomerPage />;
+        return <CustomerPage {...pageProps} />;
       default:
-        return <MemoPage />;
+        return <MemoPage {...pageProps} />;
     }
   };
 
@@ -250,13 +250,30 @@ function AppContent() {
 
   return (
     <div className="app">
+      {/* 디버그 정보 (개발용) */}
+      {debugInfo && (
+        <div style={{
+          position: 'fixed',
+          bottom: '20px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'rgba(0,0,0,0.8)',
+          color: 'white',
+          padding: '8px 16px',
+          borderRadius: '8px',
+          fontSize: '12px',
+          zIndex: 9999,
+        }}>
+          {debugInfo}
+        </div>
+      )}
       <Sidebar
         categories={CATEGORIES}
         activeCategory={activeCategory as CategoryId}
         onCategoryChange={(id) => setActiveCategory(id)}
         selectedDate={selectedDate}
         onDateChange={setSelectedDate}
-        todayCounts={todayCounts}
+        categoryCounts={computedCounts}
       />
       <main className="main-content">
         <Header
@@ -269,8 +286,6 @@ function AppContent() {
           onExportExcel={exportToExcel}
           onImport={handleImport}
           localSearchInput={localSearchInput}
-          userEmail={user?.email}
-          onProfileClick={() => setShowProfile(true)}
         />
         <div className="content-area">
           {renderPage()}
@@ -278,7 +293,7 @@ function AppContent() {
       </main>
 
       {/* 전역 검색 결과 팝업 */}
-      {showSearchResults && localSearchInput.trim() && (
+      {(showSearchResults && localSearchInput.trim()) && (
         <>
           {/* 오버레이 */}
           <div 
@@ -322,7 +337,7 @@ function AppContent() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '18px' }}>🔍</span>
                 <span style={{ fontWeight: 600, fontSize: '14px' }}>
-                  "{localSearchInput}" 검색 결과 {searchResults.length > 0 ? `(${searchResults.length}건)` : ''}
+                  "{localSearchInput}"{isSearching ? ' 검색 중...' : ` 검색 결과${searchResults.length > 0 ? ` (${searchResults.length}건)` : ''}`}
                 </span>
               </div>
               <button 
@@ -354,52 +369,88 @@ function AppContent() {
                     고객명, 종목명, 업체명 등을 검색해보세요
                   </div>
                   <div style={{ fontSize: '11px', color: '#cbd5e1', marginTop: '8px' }}>
-                    현재 검색 인덱스: {searchResults.length}개 항목
+                    모든 카테고리에서 검색 중 • 총 {searchResults.length}개 항목
                   </div>
                 </div>
               ) : (
-                searchResults.map((result, index) => (
-                  <div
-                    key={`${result.id}-${index}`}
-                    onClick={() => handleSearchResultClick(result)}
-                    style={{
-                      padding: '14px 20px',
-                      borderBottom: '1px solid #f1f5f9',
-                      cursor: 'pointer',
-                      transition: 'background 0.15s ease',
-                    }}
-                    onMouseOver={(e) => {
-                      e.currentTarget.style.background = '#f8fafc';
-                      e.currentTarget.style.borderLeft = '3px solid #1a3a5c';
-                    }}
-                    onMouseOut={(e) => {
-                      e.currentTarget.style.background = 'white';
-                      e.currentTarget.style.borderLeft = '3px solid transparent';
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-                      <span style={{
-                        fontSize: '10px',
-                        padding: '3px 10px',
-                        borderRadius: '12px',
-                        background: getCategoryColor(result.category),
-                        color: 'white',
-                        fontWeight: 600,
-                      }}>
-                        [{result.category}]
-                      </span>
-                      {result.date && (
-                        <span style={{ fontSize: '12px', color: '#94a3b8' }}>{result.date}</span>
-                      )}
-                    </div>
-                    <div style={{ fontWeight: 600, color: '#1e293b', marginBottom: '3px', fontSize: '15px' }}>
-                      {result.title}
-                    </div>
-                    <div style={{ fontSize: '13px', color: '#64748b' }}>
-                      {result.subtitle}
-                    </div>
+                <>
+                  {/* 카테고리별 결과 요약 */}
+                  <div style={{
+                    padding: '10px 20px',
+                    background: '#f8fafc',
+                    borderBottom: '1px solid #e2e8f0',
+                    fontSize: '12px',
+                    color: '#64748b',
+                    display: 'flex',
+                    gap: '8px',
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                  }}>
+                    <span style={{ fontWeight: 600, color: '#1e293b' }}>전체 {searchResults.length}건:</span>
+                    {(() => {
+                      const byCategory = searchResults.reduce((acc, item) => {
+                        acc[item.categoryLabel] = (acc[item.categoryLabel] || 0) + 1;
+                        return acc;
+                      }, {} as Record<string, number>);
+                      return Object.entries(byCategory).map(([cat, count]) => (
+                        <span key={cat} style={{
+                          background: categoryColorMap[cat] || '#1a3a5c',
+                          color: 'white',
+                          padding: '2px 8px',
+                          borderRadius: '10px',
+                          fontSize: '11px',
+                        }}>
+                          {cat} {count}건
+                        </span>
+                      ));
+                    })()}
                   </div>
-                ))
+                  {/* 결과 목록 */}
+                  <div style={{ overflow: 'auto', flex: 1, maxHeight: '420px' }}>
+                    {searchResults.map((result, index) => (
+                      <div
+                        key={`${result.id}-${index}`}
+                        onClick={() => handleSearchResultClick(result)}
+                        style={{
+                          padding: '14px 20px',
+                          borderBottom: '1px solid #f1f5f9',
+                          cursor: 'pointer',
+                          transition: 'background 0.15s ease',
+                        }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.background = '#f8fafc';
+                          e.currentTarget.style.borderLeft = '3px solid #1a3a5c';
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.background = 'white';
+                          e.currentTarget.style.borderLeft = '3px solid transparent';
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                          <span style={{
+                            fontSize: '10px',
+                            padding: '3px 10px',
+                            borderRadius: '12px',
+                            background: categoryColorMap[result.categoryLabel] || '#1a3a5c',
+                            color: 'white',
+                            fontWeight: 600,
+                          }}>
+                            [{result.categoryLabel}]
+                          </span>
+                          {result.date && (
+                            <span style={{ fontSize: '12px', color: '#94a3b8' }}>{result.date}</span>
+                          )}
+                        </div>
+                        <div style={{ fontWeight: 600, color: '#1e293b', marginBottom: '3px', fontSize: '15px' }}>
+                          {result.title}
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#64748b' }}>
+                          {result.subtitle}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
             {/* 푸터 */}
@@ -411,7 +462,7 @@ function AppContent() {
               color: '#64748b',
               textAlign: 'center',
             }}>
-              클릭하면 해당 카테고리로 이동합니다 • ESC 키로 닫기
+              클릭하면 해당 카테고리로 이동하여 상세 내용을 확인합니다 • ESC 키로 닫기
             </div>
           </div>
         </>
@@ -420,83 +471,25 @@ function AppContent() {
   );
 }
 
-// 카테고리별 색상
-function getCategoryColor(category: string): string {
-  const colors: Record<string, string> = {
-    '고객정보': '#059669',
-    '기업정보': '#7c3aed',
-    '거래내역': '#2563eb',
-    '시세체크': '#ea580c',
-    '고객의뢰': '#dc2626',
-    '계좌정보': '#0891b2',
-    '진행리스트': '#ca8a04',
-    '메모': '#4f46e5',
-    '다이어리': '#65a30d',
-    '수고비계산': '#9333ea',
-  };
-  return colors[category] || '#1a3a5c';
-}
-
-// 로딩 스타일
-const loadingStyles: Record<string, React.CSSProperties> = {
-  container: {
-    minHeight: '100vh',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: 'linear-gradient(135deg, #1a3a5c 0%, #2d5a87 100%)',
-    color: 'white',
-  },
-  spinner: {
-    fontSize: '48px',
-    animation: 'pulse 1s ease-in-out infinite',
-  },
-  text: {
-    fontSize: '16px',
-    marginTop: '16px',
-  },
+// 카테고리별 색상 (searchIndex에서 import)
+const categoryColorMap: Record<string, string> = {
+  '고객정보': '#059669',
+  '기업정보': '#7c3aed',
+  '거래내역': '#2563eb',
+  '시세체크': '#ea580c',
+  '고객의뢰': '#dc2626',
+  '계좌정보': '#0891b2',
+  '진행리스트': '#ca8a04',
+  '메모': '#4f46e5',
+  '다이어리': '#65a30d',
+  '수고비계산': '#9333ea',
 };
 
-// 프로필 페이지 스타일
-const profileContainerStyles: React.CSSProperties = {
-  minHeight: '100vh',
-  background: '#f8fafc',
-};
-
-const profileHeaderStyles: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  padding: '16px 24px',
-  background: '#ffffff',
-  borderBottom: '1px solid #e2e8f0',
-  boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-};
-
-const profileTitleStyles: React.CSSProperties = {
-  fontSize: '18px',
-  fontWeight: 600,
-  color: '#1a3a5c',
-  margin: 0,
-};
-
-const backButtonStyles: React.CSSProperties = {
-  padding: '8px 16px',
-  borderRadius: '8px',
-  border: '1px solid #e2e8f0',
-  background: '#ffffff',
-  color: '#64748b',
-  fontSize: '14px',
-  cursor: 'pointer',
-};
-
-// 메인 앱 컴포넌트 (AuthProvider로 래핑)
 function App() {
   return (
-    <AuthProvider>
+    <CountProvider>
       <AppContent />
-    </AuthProvider>
+    </CountProvider>
   );
 }
 

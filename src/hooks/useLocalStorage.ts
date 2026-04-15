@@ -42,6 +42,10 @@ export function useAppState() {
   const [attachments, setAttachments] = useLocalStorage<any[]>('attachments', []);
   const [customers, setCustomers] = useLocalStorage<any[]>('customers', []);
   const [searchQuery, setSearchQuery] = useLocalStorage('searchQuery', '');
+  
+  // 검색 결과로 선택된 항목 (상세 보기를 위해)
+  const [selectedItemId, setSelectedItemId] = useLocalStorage<string | null>('selectedItemId', null);
+  const [selectedItemType, setSelectedItemType] = useLocalStorage<string | null>('selectedItemType', null);
 
   const exportToExcel = useCallback(() => {
     const wb = XLSX.utils.book_new();
@@ -228,6 +232,12 @@ export function useAppState() {
     }
   }, [setActiveCategory, setSelectedDate, setMemos, setPriceChecks, setClientRequests, setCompanies, setTransactions, setTasks, setAccounts, setDiaryEntries, setAttachments, setCustomers]);
 
+  // Clear selected item (called after viewing detail)
+  const clearSelectedItem = useCallback(() => {
+    setSelectedItemId(null);
+    setSelectedItemType(null);
+  }, [setSelectedItemId, setSelectedItemType]);
+
   return {
     activeCategory, setActiveCategory,
     selectedDate, setSelectedDate,
@@ -242,6 +252,9 @@ export function useAppState() {
     attachments, setAttachments,
     customers, setCustomers,
     searchQuery, setSearchQuery,
+    selectedItemId, setSelectedItemId,
+    selectedItemType, setSelectedItemType,
+    clearSelectedItem,
     exportData,
     exportToExcel,
     importData,

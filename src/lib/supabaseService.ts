@@ -657,6 +657,139 @@ export async function globalSearch(query: string): Promise<SearchResult[]> {
 }
 
 // =====================================================
+// Count Functions (for real-time category counts)
+// =====================================================
+export const countsService = {
+  async getCustomersCount(): Promise<number> {
+    const { count, error } = await supabase
+      .from('customers')
+      .select('*', { count: 'exact', head: true });
+    if (error) { console.error('Error getting customers count:', error); return 0; }
+    return count || 0;
+  },
+
+  async getCompaniesCount(): Promise<number> {
+    const { count, error } = await supabase
+      .from('companies')
+      .select('*', { count: 'exact', head: true });
+    if (error) { console.error('Error getting companies count:', error); return 0; }
+    return count || 0;
+  },
+
+  async getTransactionsCount(): Promise<number> {
+    const { count, error } = await supabase
+      .from('transactions')
+      .select('*', { count: 'exact', head: true });
+    if (error) { console.error('Error getting transactions count:', error); return 0; }
+    return count || 0;
+  },
+
+  async getPriceChecksCount(): Promise<number> {
+    const { count, error } = await supabase
+      .from('price_checks')
+      .select('*', { count: 'exact', head: true });
+    if (error) { console.error('Error getting price checks count:', error); return 0; }
+    return count || 0;
+  },
+
+  async getClientRequestsCount(): Promise<number> {
+    const { count, error } = await supabase
+      .from('client_requests')
+      .select('*', { count: 'exact', head: true });
+    if (error) { console.error('Error getting client requests count:', error); return 0; }
+    return count || 0;
+  },
+
+  async getAccountsCount(): Promise<number> {
+    const { count, error } = await supabase
+      .from('accounts')
+      .select('*', { count: 'exact', head: true });
+    if (error) { console.error('Error getting accounts count:', error); return 0; }
+    return count || 0;
+  },
+
+  async getMemosCount(): Promise<number> {
+    const { count, error } = await supabase
+      .from('memos')
+      .select('*', { count: 'exact', head: true });
+    if (error) { console.error('Error getting memos count:', error); return 0; }
+    return count || 0;
+  },
+
+  async getTasksCount(): Promise<number> {
+    const { count, error } = await supabase
+      .from('tasks')
+      .select('*', { count: 'exact', head: true });
+    if (error) { console.error('Error getting tasks count:', error); return 0; }
+    return count || 0;
+  },
+
+  async getDiaryEntriesCount(): Promise<number> {
+    const { count, error } = await supabase
+      .from('diary_entries')
+      .select('*', { count: 'exact', head: true });
+    if (error) { console.error('Error getting diary entries count:', error); return 0; }
+    return count || 0;
+  },
+
+  async getInProgressRequestsCount(): Promise<number> {
+    const { count, error } = await supabase
+      .from('client_requests')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'in-progress');
+    if (error) { console.error('Error getting in-progress requests count:', error); return 0; }
+    return count || 0;
+  },
+
+  async getAllCounts(): Promise<Record<string, number>> {
+    try {
+      const [
+        customersCount,
+        companiesCount,
+        transactionsCount,
+        priceChecksCount,
+        clientRequestsCount,
+        accountsCount,
+        memosCount,
+        tasksCount,
+        diaryEntriesCount,
+        inProgressRequestsCount
+      ] = await Promise.allSettled([
+        this.getCustomersCount(),
+        this.getCompaniesCount(),
+        this.getTransactionsCount(),
+        this.getPriceChecksCount(),
+        this.getClientRequestsCount(),
+        this.getAccountsCount(),
+        this.getMemosCount(),
+        this.getTasksCount(),
+        this.getDiaryEntriesCount(),
+        this.getInProgressRequestsCount()
+      ]);
+
+      const getCount = (result: PromiseSettledResult<number>) => 
+        result.status === 'fulfilled' ? result.value : 0;
+
+      return {
+        customer: getCount(customersCount),
+        company: getCount(companiesCount),
+        transaction: getCount(transactionsCount),
+        pricecheck: getCount(priceChecksCount),
+        request: getCount(clientRequestsCount),
+        account: getCount(accountsCount),
+        memo: getCount(memosCount),
+        task: getCount(tasksCount),
+        diary: getCount(diaryEntriesCount),
+        'in-progress-requests': getCount(inProgressRequestsCount)
+      };
+    } catch (error) {
+      console.error('Error getting all counts:', error);
+      return {};
+    }
+  }
+};
+
+// =====================================================
 // Data Migration (from localStorage to Supabase)
 // =====================================================
 export async function migrateFromLocalStorage(): Promise<{ success: boolean; message: string }> {

@@ -1,10 +1,20 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useAppState } from '../hooks/useLocalStorage';
 import { generateId, formatCurrency, maskAccountNumber, Customer, CustomerStatus, CustomerType } from '../types';
+import { useCounts } from '../contexts/CountContext';
 import * as XLSX from 'xlsx';
 
-export default function CustomerPage() {
+// Props for search navigation
+interface CustomerPageProps {
+  selectedItemId?: string | null;
+  selectedItemType?: string | null;
+  highlightedItemId?: string | null;
+  onClearSelection?: () => void;
+}
+
+export default function CustomerPage({ selectedItemId, selectedItemType, highlightedItemId, onClearSelection }: CustomerPageProps = {}) {
   const { customers, setCustomers, transactions, clientRequests } = useAppState();
+  const { incrementCount } = useCounts();
   const [showForm, setShowForm] = useState(false);
   const [showAccountNumbers, setShowAccountNumbers] = useState<Record<string, boolean>>({});
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -13,6 +23,59 @@ export default function CustomerPage() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'recent' | 'amount' | 'fee'>('recent');
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Track if we need to auto-select an item from search
+  const hasAutoSelectedRef = useRef(false);
+  // Track the last selected ID to avoid re-processing
+  const lastSelectedIdRef = useRef<string | null>(null);
+
+  // Handle selected item from search - ONLY open the detail modal, don't clear selection here
+  useEffect(() => {
+    // Only process if we have a valid selection request for this page type
+    if (!selectedItemId || !selectedItemType || selectedItemType !== 'customer') {
+      return;
+    }
+    
+    // Avoid re-processing the same item
+    if (lastSelectedIdRef.current === selectedItemId && hasAutoSelectedRef.current) {
+      return;
+    }
+    
+    // If we don't have any customers loaded yet, wait
+    if (!customers || customers.length === 0) {
+      console.log('[CustomerPage] Waiting for customers to load...');
+      return;
+    }
+    
+    console.log('[CustomerPage] Auto-selecting customer:', selectedItemId);
+    console.log('[CustomerPage] Available customers:', customers.map((c: any) => c.id));
+    
+    lastSelectedIdRef.current = selectedItemId;
+    hasAutoSelectedRef.current = true;
+    
+    // Find the customer and open detail
+    const customer = customers.find((c: any) => c.id === selectedItemId);
+    if (customer) {
+      console.log('[CustomerPage] Found customer:', customer.name);
+      setSelectedCustomer(customer);
+      setActiveTab('info');
+    } else {
+      console.warn('[CustomerPage] Customer not found with ID:', selectedItemId);
+      // Try alternative ID formats
+      const customerAlt = customers.find((c: any) => 
+        c.id === selectedItemId || 
+        c.id?.includes(selectedItemId) ||
+        selectedItemId.includes(c.id)
+      );
+      if (customerAlt) {
+        console.log('[CustomerPage] Found customer via alternative match:', customerAlt.name);
+        setSelectedCustomer(customerAlt);
+        setActiveTab('info');
+      }
+    }
+    
+    // NOTE: We do NOT call onClearSelection here - only when user closes the modal
+  }, [selectedItemId, selectedItemType, customers]);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -150,16 +213,13 @@ export default function CustomerPage() {
       updatedAt: new Date().toISOString(),
     };
     setCustomers((prev: any) => [...prev, newCustomer]);
+    incrementCount('customer');
     setFormData({
       name: '', contact: '', customerType: 'both', manager: '',
       firstDealDate: '', recentDealDate: '', interestedStocks: '',
       memo: '', bankName: '', accountNumber: '', accountHolder: '', status: 'active'
     });
     setShowForm(false);
-  };
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
   };
 
   const getCustomerTypeLabel = (type: CustomerType) => {
@@ -216,6 +276,30 @@ export default function CustomerPage() {
     XLSX.writeFile(wb, '고객목록_내보내기.xlsx');
   };
 
+  // Close detail handler - ONLY NOW clear the selection
+  const handleCloseDetail = () => {
+    setSelectedCustomer(null);
+    setActiveTab('info');
+    // Reset auto-selection tracking
+    hasAutoSelectedRef.current = false;
+    lastSelectedIdRef.current = null;
+    // Clear the selected item from App state
+    if (onClearSelection) {
+      onClearSelection();
+    }
+  };
+
+  // 하이라이트 스타일
+  const getRowStyle = (customer: any) => {
+    if (highlightedItemId && customer.id === highlightedItemId) {
+      return {
+        background: '#FFF9C4',
+        transition: 'background 0.3s ease'
+      };
+    }
+    return {};
+  };
+
   // 고객 상세 페이지 렌더링
   const renderCustomerDetail = () => {
     if (!selectedCustomer) return null;
@@ -226,7 +310,7 @@ export default function CustomerPage() {
         <div style={{ background: 'var(--color-bg-card)', borderRadius: 'var(--radius-lg)', width: '90%', maxWidth: '900px', maxHeight: '90vh', overflow: 'auto', padding: 'var(--spacing-lg)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-lg)' }}>
             <h2 style={{ fontSize: 'var(--font-xl)' }}>{selectedCustomer.name}</h2>
-            <button className="btn btn-secondary btn-sm" onClick={() => setSelectedCustomer(null)}>✕ 닫기</button>
+            <button className="btn btn-secondary btn-sm" onClick={handleCloseDetail}>✕ 닫기</button>
           </div>
 
           {/* 요약 카드 */}
@@ -489,7 +573,7 @@ export default function CustomerPage() {
               </div>
               <div className="form-group">
                 <label className="form-label">관심 종목</label>
-                <input type="text" className="form-input" value={formData.interestedStocks} onChange={e => setFormData({ ...formData, interestedStocks: e.target.value })} placeholder="복수 입력 가능" />
+                <input type="text" className="form-input" value={formData.interestedStocks} onChange={e => setFormData({ ...formData, interestedStocks: e.target.value })} />
               </div>
               <div className="form-group">
                 <label className="form-label">상태</label>
@@ -514,81 +598,83 @@ export default function CustomerPage() {
                 <input type="text" className="form-input" value={formData.accountHolder} onChange={e => setFormData({ ...formData, accountHolder: e.target.value })} />
               </div>
             </div>
-            <div className="form-group">
-              <label className="form-label">메모 (고객 특이사항, 성향, 주의사항)</label>
-              <textarea className="form-textarea" value={formData.memo} onChange={e => setFormData({ ...formData, memo: e.target.value })} rows={2} />
+            <div className="form-row">
+              <div className="form-group" style={{ flex: 1 }}>
+                <label className="form-label">메모</label>
+                <textarea className="form-input" rows={2} value={formData.memo} onChange={e => setFormData({ ...formData, memo: e.target.value })} />
+              </div>
             </div>
-            <button type="submit" className="btn btn-primary">저장</button>
+            <button type="submit" className="btn btn-primary" style={{ marginTop: 'var(--spacing-md)' }}>저장</button>
           </form>
         )}
 
         {/* 고객 목록 */}
         {filteredCustomers.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-state-icon">👤</div>
-            <p className="empty-state-text">고객이 없습니다.</p>
+            <div className="empty-state-icon">👥</div>
+            <p className="empty-state-text">고객 정보가 없습니다.</p>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 'var(--spacing-md)' }}>
-            {filteredCustomers.map((customer: any) => {
-              const stats = calculateCustomerStats(customer);
-              const isWarning = stats.dealGapDays && stats.dealGapDays >= 30;
-              const isDanger = stats.dealGapDays && stats.dealGapDays >= 90;
-
-              return (
-                <div
-                  key={customer.id}
-                  style={{
-                    padding: 'var(--spacing-md)',
-                    background: isDanger ? '#fef2f2' : isWarning ? '#fffbeb' : 'var(--color-bg-card)',
-                    border: isDanger ? '1px solid #ef4444' : isWarning ? '1px solid #f59e0b' : '1px solid var(--color-border)',
-                    borderRadius: 'var(--radius-md)',
-                    cursor: 'pointer',
-                  }}
-                  onClick={() => setSelectedCustomer(customer)}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--spacing-sm)' }}>
-                    <div>
-                      <strong style={{ fontSize: 'var(--font-lg)' }}>{customer.name}</strong>
-                      <div style={{ fontSize: 'var(--font-xs)', color: 'var(--color-text-muted)', display: 'flex', gap: 'var(--spacing-sm)', marginTop: '2px' }}>
-                        <span>{getCustomerTypeLabel(customer.customerType)}</span>
-                        <span style={{ padding: '1px 6px', background: getStatusColor(customer.status), color: 'white', borderRadius: '9999px', fontSize: '10px' }}>
-                          {getStatusLabel(customer.status)}
+          <div className="table-container">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>고객명</th>
+                  <th>연락처</th>
+                  <th>유형</th>
+                  <th>담당자</th>
+                  <th>관심종목</th>
+                  <th>최근거래</th>
+                  <th>거래건수</th>
+                  <th>총매도금액</th>
+                  <th>수수료</th>
+                  <th>상태</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredCustomers.map((c: any) => {
+                  const stats = calculateCustomerStats(c);
+                  return (
+                    <tr 
+                      key={c.id}
+                      onClick={() => { setSelectedCustomer(c); setActiveTab('info'); }}
+                      style={{ cursor: 'pointer', ...getRowStyle(c) }}
+                      onMouseOver={(e) => {
+                        if (!highlightedItemId || c.id !== highlightedItemId) {
+                          e.currentTarget.style.background = 'var(--color-bg-input)';
+                        }
+                      }}
+                      onMouseOut={(e) => {
+                        if (!highlightedItemId || c.id !== highlightedItemId) {
+                          e.currentTarget.style.background = 'transparent';
+                        }
+                      }}
+                    >
+                      <td><strong>{c.name}</strong></td>
+                      <td>{c.contact || '-'}</td>
+                      <td>{getCustomerTypeLabel(c.customerType)}</td>
+                      <td>{c.manager || '-'}</td>
+                      <td style={{ maxWidth: '100px', fontSize: 'var(--font-xs)' }}>{c.interestedStocks || '-'}</td>
+                      <td style={{ fontSize: 'var(--font-xs)' }}>
+                        {stats.dealGapDays !== null ? `${stats.dealGapDays}일 전` : '-'}
+                      </td>
+                      <td>{stats.totalDealCount}</td>
+                      <td>{formatCurrency(stats.totalSellAmount)}</td>
+                      <td>{formatCurrency(stats.totalFee)}</td>
+                      <td>
+                        <span style={{ 
+                          color: getStatusColor(c.status),
+                          fontSize: 'var(--font-xs)',
+                          fontWeight: 600
+                        }}>
+                          {getStatusLabel(c.status)}
                         </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ fontSize: 'var(--font-sm)', color: 'var(--color-text-muted)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)' }}>
-                      <span>📞</span>
-                      <span>{customer.contact}</span>
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); copyToClipboard(customer.contact); }}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 'var(--font-xs)', color: 'var(--color-primary)' }}
-                      >
-                        복사
-                      </button>
-                    </div>
-                    {customer.interestedStocks && (
-                      <div style={{ marginTop: '4px' }}>
-                        <span>📈 관심: {customer.interestedStocks}</span>
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'var(--spacing-sm)', fontSize: 'var(--font-xs)' }}>
-                    <span style={{ color: 'var(--color-text-muted)' }}>
-                      거래 {stats.totalDealCount}건 | 수수료 {formatCurrency(stats.totalFee)}
-                    </span>
-                    <span style={{ 
-                      color: isDanger ? '#ef4444' : isWarning ? '#f59e0b' : 'var(--color-text-muted)',
-                      fontWeight: isDanger || isWarning ? 'bold' : 'normal'
-                    }}>
-                      {stats.dealGapDays !== null ? `${stats.dealGapDays}일` : '-'}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>

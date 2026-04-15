@@ -8,11 +8,7 @@ interface SidebarProps {
   onCategoryChange: (category: CategoryId) => void;
   selectedDate: string;
   onDateChange: (date: string) => void;
-  todayCounts: {
-    priceChecks: number;
-    clientRequests: number;
-    tasks: number;
-  };
+  categoryCounts: Record<CategoryId, number>;
 }
 
 export default function Sidebar({
@@ -21,21 +17,8 @@ export default function Sidebar({
   onCategoryChange,
   selectedDate,
   onDateChange,
-  todayCounts,
+  categoryCounts,
 }: SidebarProps) {
-  const getCategoryCount = (categoryId: CategoryId): number => {
-    switch (categoryId) {
-      case 'price-check':
-        return todayCounts.priceChecks;
-      case 'client-requests':
-        return todayCounts.clientRequests;
-      case 'task-list':
-        return todayCounts.tasks;
-      default:
-        return 0;
-    }
-  };
-
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
@@ -69,8 +52,8 @@ export default function Sidebar({
           >
             <span className="category-icon">{category.icon}</span>
             <span className="category-name">{category.name}</span>
-            {getCategoryCount(category.id) > 0 && (
-              <span className="category-count">{getCategoryCount(category.id)}</span>
+            {(categoryCounts[category.id] || 0) > 0 && (
+              <span className="category-count">{categoryCounts[category.id]}</span>
             )}
           </div>
         ))}
