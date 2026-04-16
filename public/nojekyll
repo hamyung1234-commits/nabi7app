@@ -1,0 +1,2 @@
+# This file prevents GitHub Pages from using Jekyll processing
+# Required for proper SPA routing and asset paths

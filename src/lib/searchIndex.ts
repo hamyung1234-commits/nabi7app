@@ -313,8 +313,8 @@ export function getCategoryLabel(category: string): string {
 
 /**
  * Direct Supabase search - queries DB directly for each table
- * ALWAYS searches ALL categories for comprehensive results
- * Falls back to localStorage if Supabase fails
+ * FIXED: ALWAYS searches ALL categories for comprehensive results
+ * Falls back to localStorage if Supabase fails or returns no matches
  */
 export async function searchFromDB(query: string): Promise<SearchItem[]> {
   if (!query || query.trim().length < 1) {
@@ -324,9 +324,19 @@ export async function searchFromDB(query: string): Promise<SearchItem[]> {
   const results: SearchItem[] = [];
   const q = query.toLowerCase().trim();
 
-  console.log('[SearchFromDB] Starting comprehensive search for:', query, '(searching ALL categories)');
+  console.log('[SearchFromDB] Starting comprehensive search for:', query, '(ALL categories)');
 
   try {
+    // First, try to search from in-memory index (which now includes localStorage data)
+    const indexResults = search(query);
+    if (indexResults.length > 0) {
+      console.log('[SearchFromDB] Found', indexResults.length, 'results from in-memory index');
+      return indexResults;
+    }
+
+    // If in-memory index is empty, fetch from Supabase
+    console.log('[SearchFromDB] In-memory index empty, fetching from Supabase...');
+    
     const [
       customersResult,
       companiesResult,
@@ -379,7 +389,7 @@ export async function searchFromDB(query: string): Promise<SearchItem[]> {
       return searchFromLocalStorage(query);
     }
 
-    // 1. Search CUSTOMERS
+    // Perform comprehensive search across all categories
     const matchedCustomers = customers.filter((c: any) =>
       (c.name && c.name.toLowerCase().includes(q)) ||
       (c.contact && c.contact.toLowerCase().includes(q)) ||

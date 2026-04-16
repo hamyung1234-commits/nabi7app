@@ -6,6 +6,8 @@
 
 **https://hamyung1234-commits.github.io/-nabi-app-/**
 
+> 🔗 New URL — 이전 주소가 열리지 않던 문제를 해결한 새로운 배포 주소입니다.**
+
 ## Features
 
 - 메모 관리
