@@ -36,9 +36,6 @@ jobs:
       - name: Build
         run: npm run build
         
-      - name: Fix asset paths for GitHub Pages subdirectory
-        run: node post-build-fix.js
-        
       - name: Setup Pages
         uses: actions/configure-pages@v4
         
