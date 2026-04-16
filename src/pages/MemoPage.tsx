@@ -175,15 +175,15 @@ export default function MemoPage({ selectedItemId, selectedItemType, highlighted
       </div>
 
       <div className="summary-cards">
-        <div className="summary-card price-check">
-          <div className="summary-card-label">오늘의 시세체크</div>
-          <div className="summary-card-value">
+        <div className="Summary-card price-check">
+          <div className="Summary-card-label">오늘의 시세체크</div>
+          <div className="Summary-card-value">
             {priceChecks.filter((p: any) => p.date === selectedDate).length}
           </div>
         </div>
-        <div className="summary-card client-requests">
-          <div className="summary-card-label">진행중 의뢰</div>
-          <div className="summary-card-value">
+        <div className="Summary-card client-requests">
+          <div className="Summary-card-label">진행중 의뢰</div>
+          <div className="Summary-card-value">
             {clientRequests.filter((c: any) => c.status === 'in-progress').length}
           </div>
         </div>

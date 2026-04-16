@@ -153,21 +153,21 @@ export default function PriceCheckPage({ selectedItemId, selectedItemType, highl
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-lg)' }}>
-            <div className="summary-card">
-              <div className="summary-card-label">매도희망가</div>
-              <div className="summary-card-value" style={{ color: 'var(--color-error)' }}>{formatCurrency(selectedItem.sellPrice)}</div>
+            <div className="Summary-card">
+              <div className="Summary-card-label">매도희망가</div>
+              <div className="Summary-card-value" style={{ color: 'var(--color-error)' }}>{formatCurrency(selectedItem.sellPrice)}</div>
             </div>
-            <div className="summary-card">
-              <div className="summary-card-label">매수희망가</div>
-              <div className="summary-card-value" style={{ color: 'var(--color-success)' }}>{formatCurrency(selectedItem.buyPrice)}</div>
+            <div className="Summary-card">
+              <div className="Summary-card-label">매수희망가</div>
+              <div className="Summary-card-value" style={{ color: 'var(--color-success)' }}>{formatCurrency(selectedItem.buyPrice)}</div>
             </div>
-            <div className="summary-card">
-              <div className="summary-card-label">수량</div>
-              <div className="summary-card-value">{selectedItem.quantity?.toLocaleString()}</div>
+            <div className="Summary-card">
+              <div className="Summary-card-label">수량</div>
+              <div className="Summary-card-value">{selectedItem.quantity?.toLocaleString()}</div>
             </div>
-            <div className="summary-card">
-              <div className="summary-card-label">보유회사</div>
-              <div className="summary-card-value">{selectedItem.holderCompany || '-'}</div>
+            <div className="Summary-card">
+              <div className="Summary-card-label">보유회사</div>
+              <div className="Summary-card-value">{selectedItem.holderCompany || '-'}</div>
             </div>
           </div>
 

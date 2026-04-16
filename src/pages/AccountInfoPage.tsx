@@ -172,13 +172,13 @@ export default function AccountInfoPage({ selectedItemId, selectedItemType, high
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-lg)' }}>
-            <div className="summary-card" style={{ background: 'var(--color-bg-input)' }}>
-              <div className="summary-card-label">예금주</div>
-              <div className="summary-card-value">{selectedAccount.accountHolder || '-'}</div>
+            <div className="Summary-card" style={{ background: 'var(--color-bg-input)' }}>
+              <div className="Summary-card-label">예금주</div>
+              <div className="Summary-card-value">{selectedAccount.accountHolder || '-'}</div>
             </div>
-            <div className="summary-card" style={{ background: 'var(--color-bg-input)' }}>
-              <div className="summary-card-label">용도</div>
-              <div className="summary-card-value">{selectedAccount.purpose || '-'}</div>
+            <div className="Summary-card" style={{ background: 'var(--color-bg-input)' }}>
+              <div className="Summary-card-label">용도</div>
+              <div className="Summary-card-value">{selectedAccount.purpose || '-'}</div>
             </div>
           </div>
 

@@ -191,21 +191,21 @@ export default function TransactionPage({ selectedItemId, selectedItemType, high
 
           {/* 거래 요약 */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-lg)' }}>
-            <div className="summary-card">
-              <div className="summary-card-label">매수총액</div>
-              <div className="summary-card-value">{formatCurrency(selectedTransaction.buyTotal)}</div>
+            <div className="Summary-card">
+              <div className="Summary-card-label">매수총액</div>
+              <div className="Summary-card-value">{formatCurrency(selectedTransaction.buyTotal)}</div>
             </div>
-            <div className="summary-card">
-              <div className="summary-card-label">매도총액</div>
-              <div className="summary-card-value" style={{ color: 'var(--color-primary)' }}>{formatCurrency(selectedTransaction.sellTotal)}</div>
+            <div className="Summary-card">
+              <div className="Summary-card-label">매도총액</div>
+              <div className="Summary-card-value" style={{ color: 'var(--color-primary)' }}>{formatCurrency(selectedTransaction.sellTotal)}</div>
             </div>
-            <div className="summary-card">
-              <div className="summary-card-label">실수령액</div>
-              <div className="summary-card-value" style={{ color: 'var(--color-success)' }}>{formatCurrency(selectedTransaction.actualReceipt)}</div>
+            <div className="Summary-card">
+              <div className="Summary-card-label">실수령액</div>
+              <div className="Summary-card-value" style={{ color: 'var(--color-success)' }}>{formatCurrency(selectedTransaction.actualReceipt)}</div>
             </div>
-            <div className="summary-card">
-              <div className="summary-card-label">고객</div>
-              <div className="summary-card-value">{selectedTransaction.customerName || '-'}</div>
+            <div className="Summary-card">
+              <div className="Summary-card-label">고객</div>
+              <div className="Summary-card-value">{selectedTransaction.customerName || '-'}</div>
             </div>
           </div>
 

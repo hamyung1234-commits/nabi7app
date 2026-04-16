@@ -215,21 +215,21 @@ export default function CompanyInfoPage({ selectedItemId, selectedItemType, high
 
           {/* 주가 정보 */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-lg)' }}>
-            <div className="summary-card">
-              <div className="summary-card-label">현재 주가</div>
-              <div className="summary-card-value" style={{ color: 'var(--color-primary)' }}>{formatCurrency(selectedCompany.currentPrice)}</div>
+            <div className="Summary-card">
+              <div className="Summary-card-label">현재 주가</div>
+              <div className="Summary-card-value" style={{ color: 'var(--color-primary)' }}>{formatCurrency(selectedCompany.currentPrice)}</div>
             </div>
-            <div className="summary-card">
-              <div className="summary-card-label">시가총액</div>
-              <div className="summary-card-value">{formatCurrency(calc.marketCap)}</div>
+            <div className="Summary-card">
+              <div className="Summary-card-label">시가총액</div>
+              <div className="Summary-card-value">{formatCurrency(calc.marketCap)}</div>
             </div>
-            <div className="summary-card">
-              <div className="summary-card-label">PER</div>
-              <div className="summary-card-value">{calc.per.toFixed(2)}</div>
+            <div className="Summary-card">
+              <div className="Summary-card-label">PER</div>
+              <div className="Summary-card-value">{calc.per.toFixed(2)}</div>
             </div>
-            <div className="summary-card">
-              <div className="summary-card-label">PBR</div>
-              <div className="summary-card-value">{calc.pbr.toFixed(2)}</div>
+            <div className="Summary-card">
+              <div className="Summary-card-label">PBR</div>
+              <div className="Summary-card-value">{calc.pbr.toFixed(2)}</div>
             </div>
           </div>
 

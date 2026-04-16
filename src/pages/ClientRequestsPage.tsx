@@ -191,40 +191,40 @@ export default function ClientRequestsPage({ selectedItemId, selectedItemType, h
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-lg)' }}>
-            <div className="summary-card">
-              <div className="summary-card-label">고객명</div>
-              <div className="summary-card-value">{selectedItem.clientName}</div>
+            <div className="Summary-card">
+              <div className="Summary-card-label">고객명</div>
+              <div className="Summary-card-value">{selectedItem.clientName}</div>
             </div>
-            <div className="summary-card">
-              <div className="summary-card-label">연락처</div>
-              <div className="summary-card-value">{selectedItem.contact || '-'}</div>
+            <div className="Summary-card">
+              <div className="Summary-card-label">연락처</div>
+              <div className="Summary-card-value">{selectedItem.contact || '-'}</div>
             </div>
-            <div className="summary-card">
-              <div className="summary-card-label">의뢰유형</div>
-              <div className="summary-card-value">
+            <div className="Summary-card">
+              <div className="Summary-card-label">의뢰유형</div>
+              <div className="Summary-card-value">
                 <span style={{ color: selectedItem.requestType === 'buy' ? '#10b981' : '#ef4444', fontWeight: 600 }}>
                   {getTypeLabel(selectedItem.requestType)}
                 </span>
               </div>
             </div>
-            <div className="summary-card">
-              <div className="summary-card-label">희망가격</div>
-              <div className="summary-card-value">{formatCurrency(selectedItem.desiredPrice)}</div>
+            <div className="Summary-card">
+              <div className="Summary-card-label">희망가격</div>
+              <div className="Summary-card-value">{formatCurrency(selectedItem.desiredPrice)}</div>
             </div>
-            <div className="summary-card">
-              <div className="summary-card-label">수량</div>
-              <div className="summary-card-value">{Number(selectedItem.quantity).toLocaleString()}</div>
+            <div className="Summary-card">
+              <div className="Summary-card-label">수량</div>
+              <div className="Summary-card-value">{Number(selectedItem.quantity).toLocaleString()}</div>
             </div>
-            <div className="summary-card">
-              <div className="summary-card-label">의뢰일</div>
-              <div className="summary-card-value">{selectedItem.requestDate}</div>
+            <div className="Summary-card">
+              <div className="Summary-card-label">의뢰일</div>
+              <div className="Summary-card-value">{selectedItem.requestDate}</div>
             </div>
           </div>
 
           <div style={{ marginBottom: 'var(--spacing-lg)' }}>
-            <div className="summary-card">
-              <div className="summary-card-label">상태</div>
-              <div className="summary-card-value">
+            <div className="Summary-card">
+              <div className="Summary-card-label">상태</div>
+              <div className="Summary-card-value">
                 <span className={`badge ${getStatusBadge(selectedItem.status)}`}>{getStatusLabel(selectedItem.status)}</span>
               </div>
             </div>

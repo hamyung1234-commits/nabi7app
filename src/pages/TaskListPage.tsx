@@ -169,23 +169,23 @@ export default function TaskListPage({ selectedItemId, selectedItemType, highlig
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-lg)' }}>
-            <div className="summary-card" style={{ background: 'var(--color-bg-input)' }}>
-              <div className="summary-card-label">상태</div>
-              <div className="summary-card-value">
+            <div className="Summary-card" style={{ background: 'var(--color-bg-input)' }}>
+              <div className="Summary-card-label">상태</div>
+              <div className="Summary-card-value">
                 <span className={`badge ${getStatusBadge(selectedTask.status)}`}>{getStatusLabel(selectedTask.status)}</span>
               </div>
             </div>
-            <div className="summary-card" style={{ background: 'var(--color-bg-input)' }}>
-              <div className="summary-card-label">마감일</div>
-              <div className="summary-card-value">{selectedTask.dueDate || '-'}</div>
+            <div className="Summary-card" style={{ background: 'var(--color-bg-input)' }}>
+              <div className="Summary-card-label">마감일</div>
+              <div className="Summary-card-value">{selectedTask.dueDate || '-'}</div>
             </div>
-            <div className="summary-card" style={{ background: 'var(--color-bg-input)' }}>
-              <div className="summary-card-label">관련 종목</div>
-              <div className="summary-card-value">{selectedTask.relatedStock || '-'}</div>
+            <div className="Summary-card" style={{ background: 'var(--color-bg-input)' }}>
+              <div className="Summary-card-label">관련 종목</div>
+              <div className="Summary-card-value">{selectedTask.relatedStock || '-'}</div>
             </div>
-            <div className="summary-card" style={{ background: 'var(--color-bg-input)' }}>
-              <div className="summary-card-label">고객</div>
-              <div className="summary-card-value">{selectedTask.client || '-'}</div>
+            <div className="Summary-card" style={{ background: 'var(--color-bg-input)' }}>
+              <div className="Summary-card-label">고객</div>
+              <div className="Summary-card-value">{selectedTask.client || '-'}</div>
             </div>
           </div>
 
