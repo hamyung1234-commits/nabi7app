@@ -14,7 +14,108 @@ import TaskListPage from './pages/TaskListPage';
 import AccountInfoPage from './pages/AccountInfoPage';
 import DiaryPage from './pages/DiaryPage';
 import CustomerPage from './pages/CustomerPage';
-import { CountProvider, useSidebarCounts } from './contexts/CountContext';
+import { CountProvider } from './contexts/CountContext';
+
+// ErrorScreen component (inline to avoid import issues)
+function ErrorScreen({ error, onRetry }: { error: string; onRetry?: () => void }) {
+  return (
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: '100vh',
+      padding: '20px',
+      background: '#f8fafc',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    }}>
+      <div style={{
+        background: 'white',
+        borderRadius: '16px',
+        padding: '40px',
+        maxWidth: '500px',
+        width: '100%',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+        textAlign: 'center',
+      }}>
+        <div style={{
+          width: '80px',
+          height: '80px',
+          borderRadius: '50%',
+          background: '#fee2e2',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          margin: '0 auto 24px',
+          fontSize: '40px',
+        }}>
+          ⚠️
+        </div>
+        <h2 style={{ fontSize: '20px', fontWeight: 600, color: '#1e293b', marginBottom: '12px' }}>
+          연결 오류
+        </h2>
+        <p style={{ fontSize: '14px', color: '#64748b', lineHeight: 1.6, marginBottom: '24px' }}>
+          {error || '서버 연결에 실패했습니다.'}
+          <br />
+          <span style={{ fontSize: '13px', color: '#94a3b8' }}>
+            새로고침(F5)을 눌러주세요.
+          </span>
+        </p>
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+          <button
+            onClick={onRetry || (() => window.location.reload())}
+            style={{
+              padding: '12px 24px',
+              background: '#1a3a5c',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: 500,
+              cursor: 'pointer',
+            }}
+          >
+            🔄 새로고침
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Loading screen component
+function LoadingScreen({ message = '로딩 중...' }: { message?: string }) {
+  return (
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: '100vh',
+      background: '#f8fafc',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    }}>
+      <div style={{
+        width: '60px',
+        height: '60px',
+        border: '4px solid #e2e8f0',
+        borderTop: '4px solid #1a3a5c',
+        borderRadius: '50%',
+        animation: 'spin 1s linear infinite',
+        marginBottom: '20px',
+      }} />
+      <p style={{ fontSize: '16px', color: '#64748b', fontWeight: 500 }}>
+        {message}
+      </p>
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
+  );
+}
 
 // 카테고리 ID 매핑
 const CATEGORY_MAP: Record<string, string> = {
@@ -30,7 +131,55 @@ const CATEGORY_MAP: Record<string, string> = {
   fee: 'fee-calculator',
 };
 
+// 카테고리별 색상
+const categoryColorMap: Record<string, string> = {
+  '고객정보': '#059669',
+  '기업정보': '#7c3aed',
+  '거래내역': '#2563eb',
+  '시세체크': '#ea580c',
+  '고객의뢰': '#dc2626',
+  '계좌정보': '#0891b2',
+  '진행리스트': '#ca8a04',
+  '메모': '#4f46e5',
+  '다이어리': '#65a30d',
+  '수고비계산': '#9333ea',
+};
+
+// Get counts from localStorage (fallback when Supabase unavailable)
+function getLocalStorageCounts(): Record<CategoryId, number> {
+  const getData = (key: string): any[] => {
+    const data = localStorage.getItem(`nabi-data-1.0-${key}`);
+    if (data) return JSON.parse(data);
+    const capitalized = key.charAt(0).toUpperCase() + key.slice(1);
+    const data2 = localStorage.getItem(`nabi-data-1.0-${capitalized}`);
+    if (data2) return JSON.parse(data2);
+    return [];
+  };
+
+  const clientRequests = getData('clientRequests');
+  const inProgressRequests = (clientRequests || []).filter((r: any) => r.status === 'in-progress').length;
+
+  return {
+    'memo': getData('memos').length,
+    'price-check': getData('priceChecks').length,
+    'client-requests': inProgressRequests,
+    'company-info': getData('companies').length,
+    'fee-calculator': 0,
+    'transactions': getData('transactions').length,
+    'task-list': getData('tasks').length,
+    'account-info': getData('accounts').length,
+    'diary': getData('diaryEntries').length,
+    'customer': getData('customers').length,
+  };
+}
+
 function AppContent() {
+  // 앱 초기화 상태 관리
+  const [isAppLoading, setIsAppLoading] = useState(true);
+  const [appError, setAppError] = useState<string | null>(null);
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
+  const initTimeoutRef = useRef<number | null>(null);
+
   const {
     activeCategory,
     setActiveCategory,
@@ -48,8 +197,8 @@ function AppContent() {
     clearSelectedItem,
   } = useAppState();
 
-  // Get counts from CountProvider for sidebar
-  const computedCounts = useSidebarCounts();
+  // Get counts from localStorage (synchronous, always works)
+  const computedCounts = getLocalStorageCounts();
 
   // Mobile sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -68,17 +217,61 @@ function AppContent() {
   // Track previous category to detect navigation
   const prevCategoryRef = useRef<string>(activeCategory);
 
-  // Search index initialization (on mount, once)
+  // 앱 초기화 (Search index initialization + 5초 타임아웃)
   useEffect(() => {
-    const initSearch = async () => {
+    // 타임아웃 설정: 5초 이상 로딩되면 오류 처리
+    initTimeoutRef.current = window.setTimeout(() => {
+      console.warn('[App] Initialization timeout - Supabase may not be connected');
+      setLoadingTimeout(true);
+      // 로컬 스토리지 데이터는 이미 useAppState에서 로드되었으므로 그냥 진행
+      setIsAppLoading(false);
+    }, 5000);
+
+    const initApp = async () => {
       try {
-        await initSearchIndexFromDB();
-        console.log('[App] Search index initialized from Supabase');
-      } catch (error) {
-        console.error('[App] Failed to initialize search index:', error);
+        console.log('[App] Starting initialization...');
+        
+        // Search index 초기화 시도 (실패해도 계속 진행)
+        try {
+          await initSearchIndexFromDB();
+          console.log('[App] Search index initialized');
+        } catch (searchError) {
+          console.warn('[App] Search index init failed, using local fallback:', searchError);
+        }
+        
+        // 초기화 완료
+        console.log('[App] App initialized successfully');
+        
+        // 타임아웃 정리
+        if (initTimeoutRef.current) {
+          clearTimeout(initTimeoutRef.current);
+          initTimeoutRef.current = null;
+        }
+        
+        setIsAppLoading(false);
+      } catch (error: any) {
+        console.error('[App] Initialization error:', error);
+        
+        // 타임아웃 정리
+        if (initTimeoutRef.current) {
+          clearTimeout(initTimeoutRef.current);
+          initTimeoutRef.current = null;
+        }
+        
+        // 로컬 데이터는 이미 useAppState에서 로드되었으므로 앱 계속 사용 가능
+        setAppError(`연결 오류: ${error?.message || '서버 연결 실패'}\n\n로컬 데이터로 계속 진행합니다.`);
+        setIsAppLoading(false);
       }
     };
-    initSearch();
+
+    initApp();
+
+    // cleanup
+    return () => {
+      if (initTimeoutRef.current) {
+        clearTimeout(initTimeoutRef.current);
+      }
+    };
   }, []);
 
   // When category changes, clear the selected item after it's been processed
@@ -251,8 +444,65 @@ function AppContent() {
 
   const currentCategory = CATEGORIES.find(c => c.id === activeCategory);
 
+  // 로딩 중 상태
+  if (isAppLoading) {
+    return (
+      <LoadingScreen 
+        message={
+          loadingTimeout 
+            ? '서버 연결 중... 로컬 데이터를 불러오는 중입니다.' 
+            : '앱을 초기화하는 중...'
+        } 
+      />
+    );
+  }
+
+  // 오류 발생 (critical error만 표시, graceful fallback은 그냥 진행)
+  if (appError && !appError.includes('로컬 데이터로 계속 진행')) {
+    return (
+      <ErrorScreen 
+        error={appError} 
+        onRetry={() => window.location.reload()} 
+      />
+    );
+  }
+
   return (
     <div className="app">
+      {/* 연결 오류 알림 배너 (graceful fallback 시) */}
+      {appError && appError.includes('로컬 데이터로 계속 진행') && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          background: '#fef3c7',
+          color: '#92400e',
+          padding: '8px 16px',
+          textAlign: 'center',
+          fontSize: '13px',
+          zIndex: 9999,
+          borderBottom: '2px solid #fbbf24',
+        }}>
+          ⚠️ 서버 연결 실패 — 로컬 데이터로 작동 중 |{' '}
+          <button 
+            onClick={() => window.location.reload()}
+            style={{
+              background: '#f59e0b',
+              color: 'white',
+              border: 'none',
+              padding: '4px 12px',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: 500,
+            }}
+          >
+            새로고침
+          </button>
+        </div>
+      )}
+      
       {/* 디버그 정보 (개발용) */}
       {debugInfo && (
         <div style={{
@@ -494,20 +744,6 @@ function AppContent() {
     </div>
   );
 }
-
-// 카테고리별 색상 (searchIndex에서 import)
-const categoryColorMap: Record<string, string> = {
-  '고객정보': '#059669',
-  '기업정보': '#7c3aed',
-  '거래내역': '#2563eb',
-  '시세체크': '#ea580c',
-  '고객의뢰': '#dc2626',
-  '계좌정보': '#0891b2',
-  '진행리스트': '#ca8a04',
-  '메모': '#4f46e5',
-  '다이어리': '#65a30d',
-  '수고비계산': '#9333ea',
-};
 
 function App() {
   return (
