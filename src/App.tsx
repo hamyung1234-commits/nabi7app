@@ -176,7 +176,6 @@ function getLocalStorageCounts(): Record<CategoryId, number> {
 function AppContent() {
   // 앱 초기화 상태 관리
   const [isAppLoading, setIsAppLoading] = useState(true);
-  const [appError, setAppError] = useState<string | null>(null);
   const [loadingTimeout, setLoadingTimeout] = useState(false);
   const initTimeoutRef = useRef<number | null>(null);
 
@@ -217,15 +216,14 @@ function AppContent() {
   // Track previous category to detect navigation
   const prevCategoryRef = useRef<string>(activeCategory);
 
-  // 앱 초기화 (Search index initialization + 5초 타임아웃)
+  // 앱 초기화 (Search index initialization)
   useEffect(() => {
-    // 타임아웃 설정: 5초 이상 로딩되면 오류 처리
+    // 타임아웃 설정: 3초 이상 로딩되면 localStorage만으로 진행
     initTimeoutRef.current = window.setTimeout(() => {
-      console.warn('[App] Initialization timeout - Supabase may not be connected');
+      console.warn('[App] Initialization timeout (3s) - proceeding with local data only');
       setLoadingTimeout(true);
-      // 로컬 스토리지 데이터는 이미 useAppState에서 로드되었으므로 그냥 진행
       setIsAppLoading(false);
-    }, 5000);
+    }, 3000);
 
     const initApp = async () => {
       try {
@@ -259,7 +257,6 @@ function AppContent() {
         }
         
         // 로컬 데이터는 이미 useAppState에서 로드되었으므로 앱 계속 사용 가능
-        setAppError(`연결 오류: ${error?.message || '서버 연결 실패'}\n\n로컬 데이터로 계속 진행합니다.`);
         setIsAppLoading(false);
       }
     };
@@ -448,61 +445,17 @@ function AppContent() {
   if (isAppLoading) {
     return (
       <LoadingScreen 
-        message={
-          loadingTimeout 
-            ? '서버 연결 중... 로컬 데이터를 불러오는 중입니다.' 
-            : '앱을 초기화하는 중...'
-        } 
+        message={loadingTimeout 
+          ? '검색 초기화 중... 앱은 곧 사용 가능합니다.' 
+          : '앱을 초기화하는 중...'} 
       />
     );
   }
 
-  // 오류 발생 (critical error만 표시, graceful fallback은 그냥 진행)
-  if (appError && !appError.includes('로컬 데이터로 계속 진행')) {
-    return (
-      <ErrorScreen 
-        error={appError} 
-        onRetry={() => window.location.reload()} 
-      />
-    );
-  }
+  // 오류 발생 없음 - 로컬 데이터로 항상 작동
 
   return (
     <div className="app">
-      {/* 연결 오류 알림 배너 (graceful fallback 시) */}
-      {appError && appError.includes('로컬 데이터로 계속 진행') && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          background: '#fef3c7',
-          color: '#92400e',
-          padding: '8px 16px',
-          textAlign: 'center',
-          fontSize: '13px',
-          zIndex: 9999,
-          borderBottom: '2px solid #fbbf24',
-        }}>
-          ⚠️ 서버 연결 실패 — 로컬 데이터로 작동 중 |{' '}
-          <button 
-            onClick={() => window.location.reload()}
-            style={{
-              background: '#f59e0b',
-              color: 'white',
-              border: 'none',
-              padding: '4px 12px',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: 500,
-            }}
-          >
-            새로고침
-          </button>
-        </div>
-      )}
-      
       {/* 디버그 정보 (개발용) */}
       {debugInfo && (
         <div style={{
