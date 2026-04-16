@@ -2,8 +2,10 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
-// Determine base path - use environment variable or default to GitHub Pages subdirectory
-const base = process.env.VITE_BASE_URL || '/-nabi-app-/';
+// Base path configuration:
+// - Default: "/" for Vercel/Netlify/Render
+// - Use VITE_BASE_URL env var for GitHub Pages subdirectory
+const base = process.env.VITE_BASE_URL || '/';
 
 export default defineConfig({
   plugins: [react()],

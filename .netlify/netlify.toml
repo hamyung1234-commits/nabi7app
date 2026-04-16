@@ -8,9 +8,8 @@ redirects = []
 
 [build]
 publish = "C:\\Users\\aaas noh jang hyub\\BlueforgeProjects\\나의비서\\dist"
-publishOrigin = "ui"
+publishOrigin = "config"
 commandOrigin = "ui"
-command = "npm run build"
 
 [build.environment]
 
