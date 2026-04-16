@@ -5,8 +5,8 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Fix asset paths for GitHub Pages deployment
-// Update from old /-nabi-app-/ path to new /nabi7app/ path
+// Fix asset paths for GitHub Pages deployment (nabi7app repository)
+// The repository is named "nabi7app" so all assets need /nabi7app/ prefix
 
 const distPath = path.join(__dirname, 'dist');
 const indexPath = path.join(distPath, 'index.html');
@@ -30,8 +30,6 @@ function fixPathsInFile(filePath, oldPath, newPath) {
 }
 
 function processDirectory(dirPath, oldPath, newPath) {
-  if (!fs.existsSync(dirPath)) return;
-  
   const files = fs.readdirSync(dirPath);
   
   for (const file of files) {
@@ -51,14 +49,20 @@ function processDirectory(dirPath, oldPath, newPath) {
 
 console.log('Fixing asset paths for nabi7app GitHub Pages deployment...');
 
-// Fix index.html - update paths from old /-nabi-app-/ to /nabi7app/
-fixPathsInFile(indexPath, '/-nabi-app-/', '/nabi7app/');
-console.log('Fixed index.html paths');
+// Fix index.html - ensure /nabi7app/ prefix
+// Replace /nabi-app-/ with /nabi7app/
+const indexModified1 = fixPathsInFile(indexPath, '/nabi-app-/', '/nabi7app/');
+if (indexModified1) {
+  console.log('Fixed index.html - updated /nabi-app-/ to /nabi7app/');
+} else {
+  console.log('index.html already has correct paths');
+}
 
 // Fix any remaining incorrect paths in assets
 const assetsPath = path.join(distPath, 'assets');
 if (fs.existsSync(assetsPath)) {
-  processDirectory(assetsPath, '/-nabi-app-/', '/nabi7app/');
+  // Fix /nabi-app-/ paths in assets
+  processDirectory(assetsPath, '/nabi-app-/', '/nabi7app/');
 }
 
 console.log('Asset path fix completed for nabi7app!');

@@ -3,11 +3,13 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
+  "homepage": "https://hamyung1234-commits.github.io/nabi7app/",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node post-build-fix.js",
     "preview": "vite preview",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "deploy": "npm run build && gh-pages -d dist"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.103.0",
