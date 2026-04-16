@@ -107,8 +107,10 @@ function getLocalStorageCounts(): Record<CategoryId, number> {
 }
 
 function AppContent() {
-  // 앱 초기화 상태 관리 - 빠르게 로딩 완료
+  // 앱 초기화 상태 관리
   const [isAppLoading, setIsAppLoading] = useState(true);
+  const [loadingError, setLoadingError] = useState<string | null>(null);
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
 
   const {
     activeCategory,
@@ -147,9 +149,22 @@ function AppContent() {
   // Track previous category to detect navigation
   const prevCategoryRef = useRef<string>(activeCategory);
 
+  // 5초 타임아웃 - 앱이 이 시간 안에 로딩되지 않으면 오류 메시지 표시
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (isAppLoading) {
+        console.warn('[App] Loading timeout (5s) - showing error message');
+        setLoadingTimeout(true);
+        setLoadingError('서버 연결에 실패했습니다. 새로고침(F5)을 눌러주세요.');
+        setIsAppLoading(false);
+      }
+    }, 5000);
+    
+    return () => clearTimeout(timeoutId);
+  }, [isAppLoading]);
+  
   // 앱 초기화 (Search index initialization)
-useEffect(() => {
-    // 즉시 로딩 완료 - localStorage는 이미 useAppState에서 동기적으로 로드됨
+  useEffect(() => {
     console.log('[App] Starting initialization (fast path - localStorage always available)');
 
     const initApp = async () => {
@@ -162,25 +177,14 @@ useEffect(() => {
         // 실패해도 계속 진행 - localStorage 데이터는 이미 사용 가능
       }
       
-      // 500ms 후 로딩 완료 (사용자 경험 개선을 위한 최소 대기시간)
+      // 300ms 후 로딩 완료
       setTimeout(() => {
         console.log('[App] Initialization complete - rendering app');
         setIsAppLoading(false);
-      }, 500);
+      }, 300);
     };
-
-    // 최대 3초 후에도 로딩 중이면強制的に終了
-    const timeout = setTimeout(() => {
-      console.warn('[App] Initialization timeout (3s) - forcing render');
-      setIsAppLoading(false);
-    }, 3000);
 
     initApp();
-
-    // cleanup
-    return () => {
-      clearTimeout(timeout);
-    };
   }, []);
 
   // When category changes, clear the selected item after it's been processed
@@ -353,7 +357,7 @@ useEffect(() => {
 
   const currentCategory = CATEGORIES.find(c => c.id === activeCategory);
 
-  // 로딩 중 상태
+  // 로딩 중 상태 또는 오류 상태
   if (isAppLoading) {
     return (
       <LoadingScreen 
@@ -364,7 +368,46 @@ useEffect(() => {
     );
   }
 
-  // 오류 발생 없음 - 로컬 데이터로 항상 작동
+  // 오류 상태 표시
+  if (loadingError) {
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        background: '#f8fafc',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        padding: '20px',
+        textAlign: 'center',
+      }}>
+        <div style={{ fontSize: '64px', marginBottom: '20px' }}>⚠️</div>
+        <h2 style={{ color: '#dc2626', marginBottom: '12px', fontSize: '20px' }}>연결 오류</h2>
+        <p style={{ color: '#64748b', marginBottom: '20px', maxWidth: '400px' }}>
+          {loadingError}
+        </p>
+        <p style={{ color: '#94a3b8', fontSize: '12px', marginBottom: '24px' }}>
+          로컬 데이터는 계속 사용할 수 있습니다.
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          style={{
+            padding: '12px 24px',
+            background: '#1a3a5c',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: 500,
+          }}
+        >
+          새로고침
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="app">

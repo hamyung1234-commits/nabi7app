@@ -4,7 +4,7 @@ import path from 'path'
 
 export default defineConfig({
   plugins: [react()],
-  base: '/nabi7app/',
+  base: './',  // Use relative paths for better compatibility
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
