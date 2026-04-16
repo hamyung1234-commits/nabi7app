@@ -1,23 +1,34 @@
 @echo off
-echo ===============================================
-echo    Netlify Drag & Drop Deploy Instructions
-echo ===============================================
+REM ============================================
+REM 나비7app 배포 스크립트
+REM ============================================
+
 echo.
-echo Your app is BUILT and READY!
+echo =============================================
+echo   나비7app GitHub Pages 배포
+echo =============================================
 echo.
-echo STEP 1: Open File Explorer
-echo STEP 2: Navigate to this project folder
-echo STEP 3: Find the "dist" folder inside
-echo STEP 4: Open browser to: https://app.netlify.com/drop
-echo STEP 5: Drag the "dist" folder onto that page
-echo STEP 6: Get your URL!
+
+REM GitHub 저장소 URL (필요시 수정)
+set REPO_NAME=-nabi-app-
+set GITHUB_USER=hamyung1234-commits
+
+echo 1. GitHub에 접속하세요
+echo    https://github.com/%GITHUB_USER%/%REPO_NAME%/settings/pages
 echo.
-echo ===============================================
-echo NOTE: dist folder already contains:
-echo   - index.html
-echo   - assets/ (916 modules)
-echo   - nabi-icon.svg
-echo   - 404.html
-echo ===============================================
+echo 2. Source를 "Deploy from a branch"로 선택
 echo.
+echo 3. Branch를 "gh-pages"로 선택 (없으면 생성)
+echo.
+echo 4. Save 클릭
+echo.
+echo 5. dist 폴더의 모든 파일을 drag-and-drop으로 업로드
+echo.
+echo =============================================
+echo.
+echo 참고: GitHub Actions가 자동으로 배포되므로
+echo        Actions 탭에서 상태 확인 가능
+echo =============================================
+echo.
+
 pause
