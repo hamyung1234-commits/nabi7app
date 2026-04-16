@@ -1269,6 +1269,26 @@ body {
 @media (max-width: 1023px) {
   /* Ensure minimum touch targets on mobile */
   button,
+  [role="button"],
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"],
+  .btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+
+  /* Mobile Menu Button - Show on tablet and below */
+  .mobile-menu-btn {
+    display: flex !important;
+  }
+}ton,
   .btn,
   a,
   input[type="button"],

@@ -51,6 +51,9 @@ function AppContent() {
   // Get counts from CountProvider for sidebar
   const computedCounts = useSidebarCounts();
 
+  // Mobile sidebar state
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   // 하이라이트 상태 (검색 결과에서 선택된 항목 강조 표시)
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
   const highlightTimeoutRef = useRef<number | null>(null);
@@ -274,7 +277,28 @@ function AppContent() {
         selectedDate={selectedDate}
         onDateChange={setSelectedDate}
         categoryCounts={computedCounts}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
       />
+      {/* Mobile menu toggle button */}
+      <button
+        className="mobile-menu-btn"
+        onClick={() => setSidebarOpen(true)}
+        style={{
+          display: 'none',
+          position: 'fixed',
+          top: '16px',
+          left: '16px',
+          zIndex: 999,
+        }}
+        aria-label="메뉴 열기"
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <line x1="3" y1="6" x2="21" y2="6" />
+          <line x1="3" y1="12" x2="21" y2="12" />
+          <line x1="3" y1="18" x2="21" y2="18" />
+        </svg>
+      </button>
       <main className="main-content">
         <Header
           title={currentCategory?.name || '나비'}
