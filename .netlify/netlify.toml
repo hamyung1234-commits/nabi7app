@@ -1,6 +1,6 @@
-headersOrigin = "config"
-redirectsOrigin = "config"
 plugins = []
+headers = []
+redirects = []
 
 [functions]
 
@@ -8,13 +8,11 @@ plugins = []
 
 [build]
 publish = "C:\\Users\\aaas noh jang hyub\\BlueforgeProjects\\나의비서\\dist"
-publishOrigin = "config"
-commandOrigin = "config"
+publishOrigin = "ui"
+commandOrigin = "ui"
 command = "npm run build"
 
 [build.environment]
-NODE_VERSION = "20"
-VITE_BASE_URL = "/"
 
 [build.processing]
 
@@ -27,24 +25,3 @@ VITE_BASE_URL = "/"
 [build.processing.js]
 
 [build.services]
-
-[[headers]]
-for = "/*"
-
-[headers.values]
-X-Frame-Options = "DENY"
-X-XSS-Protection = "1; mode=block"
-X-Content-Type-Options = "nosniff"
-Referrer-Policy = "strict-origin-when-cross-origin"
-
-[[redirects]]
-from = "/*"
-to = "/index.html"
-status = 200.0
-force = false
-
-[redirects.query]
-
-[redirects.conditions]
-
-[redirects.headers]
