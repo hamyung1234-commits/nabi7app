@@ -18,10 +18,10 @@ import {
 
 export interface SearchItem {
   id: string;
-  originalId: string;  // Store the original ID separately for easier extraction
+  originalId: string;
   type: 'customer' | 'company' | 'transaction' | 'pricecheck' | 'request' | 'account' | 'diary' | 'memo' | 'task' | 'fee';
   category: string;
-  categoryLabel: string;  // 한국어 카테고리 이름
+  categoryLabel: string;
   title: string;
   subtitle: string;
   detail: string;
@@ -63,7 +63,7 @@ function createSearchItem(type: string, data: any): SearchItem {
       date = data.first_deal_date || data.firstDealDate;
       break;
     case 'company':
-      title = data.stock_name || '종목명 없음';
+      title = data.stock_name || data.stockName || '종목명 없음';
       subtitle = `${data.industry || ''} | 시세: ${data.current_price?.toLocaleString() || '0'}원`;
       detail = [data.stock_name, data.industry, data.memo, data.par_value, data.total_shares].filter(Boolean).join(' ');
       break;
@@ -141,7 +141,6 @@ export async function initSearchIndexFromDB(): Promise<void> {
   console.log('[SearchIndex] Starting DB initialization...');
 
   try {
-    // Fetch all data from Supabase in parallel - ALL categories
     const [
       customersResult,
       companiesResult,
@@ -164,7 +163,6 @@ export async function initSearchIndexFromDB(): Promise<void> {
       diaryEntriesService.getAll(),
     ]);
 
-    // Helper to log and extract data
     const extractData = (name: string, result: PromiseSettledResult<any>): any[] => {
       if (result.status === 'fulfilled') {
         const data = Array.isArray(result.value) ? result.value : [];
@@ -186,7 +184,6 @@ export async function initSearchIndexFromDB(): Promise<void> {
     const tasks = extractData('tasks', tasksResult);
     const diaryEntries = extractData('diaryEntries', diaryEntriesResult);
 
-    // Add items to search index - ALL categories
     customers.forEach((c: any) => searchIndex.push(createSearchItem('customer', c)));
     companies.forEach((c: any) => searchIndex.push(createSearchItem('company', c)));
     transactions.forEach((t: any) => searchIndex.push(createSearchItem('transaction', t)));
@@ -269,7 +266,6 @@ export async function searchFromDB(query: string): Promise<SearchItem[]> {
   console.log('[SearchFromDB] Starting comprehensive search for:', query, '(searching ALL categories)');
 
   try {
-    // Fetch ALL data in parallel - 9 categories
     const [
       customersResult,
       companiesResult,
@@ -292,7 +288,6 @@ export async function searchFromDB(query: string): Promise<SearchItem[]> {
       diaryEntriesService.getAll(),
     ]);
 
-    // Helper to log and extract data
     const logResult = (name: string, result: PromiseSettledResult<any>): any[] => {
       if (result.status === 'fulfilled') {
         const data = Array.isArray(result.value) ? result.value : [];
@@ -314,7 +309,6 @@ export async function searchFromDB(query: string): Promise<SearchItem[]> {
     const tasks = logResult('tasks', tasksResult);
     const diaryEntries = logResult('diaryEntries', diaryResult);
 
-    // Check if we got no data - if so, try localStorage fallback
     const totalData = customers.length + companies.length + transactions.length + 
                       priceChecks.length + requests.length + accounts.length + 
                       memos.length + tasks.length + diaryEntries.length;
@@ -324,9 +318,7 @@ export async function searchFromDB(query: string): Promise<SearchItem[]> {
       return searchFromLocalStorage(query);
     }
 
-    // Enhanced Supabase search - search ALL fields across ALL categories
-
-    // 1. Search CUSTOMERS - ALL fields comprehensively
+    // 1. Search CUSTOMERS
     const matchedCustomers = customers.filter((c: any) =>
       (c.name && c.name.toLowerCase().includes(q)) ||
       (c.contact && c.contact.toLowerCase().includes(q)) ||
@@ -346,12 +338,12 @@ export async function searchFromDB(query: string): Promise<SearchItem[]> {
       (c.address && c.address.toLowerCase().includes(q)) ||
       (c.email && c.email.toLowerCase().includes(q))
     );
-    console.log(`[SearchFromDB] Customers matched: ${matchedCustomers.length}`);
     matchedCustomers.forEach((c: any) => results.push(createSearchItem('customer', c)));
 
-    // 2. Search COMPANIES - ALL fields
+    // 2. Search COMPANIES
     const matchedCompanies = companies.filter((c: any) =>
       (c.stock_name && c.stock_name.toLowerCase().includes(q)) ||
+      (c.stockName && c.stockName.toLowerCase().includes(q)) ||
       (c.industry && c.industry.toLowerCase().includes(q)) ||
       (c.memo && c.memo.toLowerCase().includes(q)) ||
       (c.par_value && String(c.par_value).toLowerCase().includes(q)) ||
@@ -363,7 +355,7 @@ export async function searchFromDB(query: string): Promise<SearchItem[]> {
     );
     matchedCompanies.forEach((c: any) => results.push(createSearchItem('company', c)));
 
-    // 3. Search TRANSACTIONS - ALL fields
+    // 3. Search TRANSACTIONS
     const matchedTransactions = transactions.filter((t: any) =>
       (t.stock_name && t.stock_name.toLowerCase().includes(q)) ||
       (t.customer_name && t.customer_name.toLowerCase().includes(q)) ||
@@ -379,7 +371,7 @@ export async function searchFromDB(query: string): Promise<SearchItem[]> {
     );
     matchedTransactions.forEach((t: any) => results.push(createSearchItem('transaction', t)));
 
-    // 4. Search PRICE CHECKS - ALL fields
+    // 4. Search PRICE CHECKS
     const matchedPriceChecks = priceChecks.filter((p: any) =>
       (p.stock_name && p.stock_name.toLowerCase().includes(q)) ||
       (p.holder_company && p.holder_company.toLowerCase().includes(q)) ||
@@ -391,7 +383,7 @@ export async function searchFromDB(query: string): Promise<SearchItem[]> {
     );
     matchedPriceChecks.forEach((p: any) => results.push(createSearchItem('pricecheck', p)));
 
-    // 5. Search CLIENT REQUESTS - ALL fields
+    // 5. Search CLIENT REQUESTS
     const matchedRequests = requests.filter((r: any) =>
       (r.client_name && r.client_name.toLowerCase().includes(q)) ||
       (r.clientName && r.clientName.toLowerCase().includes(q)) ||
@@ -407,7 +399,7 @@ export async function searchFromDB(query: string): Promise<SearchItem[]> {
     );
     matchedRequests.forEach((r: any) => results.push(createSearchItem('request', r)));
 
-    // 6. Search ACCOUNTS - ALL fields
+    // 6. Search ACCOUNTS
     const matchedAccounts = accounts.filter((a: any) =>
       (a.bank_name && a.bank_name.toLowerCase().includes(q)) ||
       (a.account_number && a.account_number.toLowerCase().includes(q)) ||
@@ -418,18 +410,18 @@ export async function searchFromDB(query: string): Promise<SearchItem[]> {
     );
     matchedAccounts.forEach((a: any) => results.push(createSearchItem('account', a)));
 
-    // 7. Search MEMOS - ALL fields
+    // 7. Search MEMOS
     const matchedMemos = memos.filter((m: any) =>
       (m.title && m.title.toLowerCase().includes(q)) ||
       (m.content && m.content.toLowerCase().includes(q)) ||
       (m.date && m.date.toLowerCase().includes(q)) ||
       (m.created_at && m.created_at.toLowerCase().includes(q)) ||
-      (m.tags && m.tags.toLowerCase().includes(q)) ||
+      (m.tags && String(m.tags).toLowerCase().includes(q)) ||
       (m.category && m.category.toLowerCase().includes(q))
     );
     matchedMemos.forEach((m: any) => results.push(createSearchItem('memo', m)));
 
-    // 8. Search TASKS - ALL fields
+    // 8. Search TASKS
     const matchedTasks = tasks.filter((t: any) =>
       (t.title && t.title.toLowerCase().includes(q)) ||
       (t.description && t.description.toLowerCase().includes(q)) ||
@@ -443,7 +435,7 @@ export async function searchFromDB(query: string): Promise<SearchItem[]> {
     );
     matchedTasks.forEach((t: any) => results.push(createSearchItem('task', t)));
 
-    // 9. Search DIARY ENTRIES - ALL fields
+    // 9. Search DIARY ENTRIES
     const matchedDiary = diaryEntries.filter((d: any) =>
       (d.content && d.content.toLowerCase().includes(q)) ||
       (d.date && d.date.toLowerCase().includes(q)) ||
@@ -453,17 +445,14 @@ export async function searchFromDB(query: string): Promise<SearchItem[]> {
     );
     matchedDiary.forEach((d: any) => results.push(createSearchItem('diary', d)));
 
-    // Sort by relevance (exact matches first, then partial)
+    // Sort by relevance
     results.sort((a, b) => {
       const aTitle = a.title.toLowerCase();
       const bTitle = b.title.toLowerCase();
       const queryLower = q.toLowerCase();
       
-      // Exact title match first
       if (aTitle === queryLower && bTitle !== queryLower) return -1;
       if (bTitle === queryLower && aTitle !== queryLower) return 1;
-      
-      // Title starts with query
       if (aTitle.startsWith(queryLower) && !bTitle.startsWith(queryLower)) return -1;
       if (bTitle.startsWith(queryLower) && !aTitle.startsWith(queryLower)) return 1;
       
@@ -472,7 +461,6 @@ export async function searchFromDB(query: string): Promise<SearchItem[]> {
 
     console.log('[SearchFromDB] Final results:', results.length, 'from ALL categories');
     
-    // Log breakdown by category
     const byCategory = results.reduce((acc, item) => {
       acc[item.categoryLabel] = (acc[item.categoryLabel] || 0) + 1;
       return acc;
@@ -487,21 +475,18 @@ export async function searchFromDB(query: string): Promise<SearchItem[]> {
 }
 
 /**
- * Helper to get data from localStorage with flexible key matching (backwards compatibility)
+ * Helper to get data from localStorage with flexible key matching
  */
 function getLocalStorageData(key: string): any[] {
   const STORAGE_PREFIX = 'nabi-data-1.0-';
   
-  // Try exact match first (lowercase)
   let data = localStorage.getItem(`${STORAGE_PREFIX}${key}`);
   if (data) return JSON.parse(data);
   
-  // Try capitalized first letter (for backwards compatibility)
   const capitalized = key.charAt(0).toUpperCase() + key.slice(1);
   data = localStorage.getItem(`${STORAGE_PREFIX}${capitalized}`);
   if (data) return JSON.parse(data);
   
-  // Try no prefix (for legacy data)
   data = localStorage.getItem(key);
   if (data) return JSON.parse(data);
   
@@ -510,7 +495,6 @@ function getLocalStorageData(key: string): any[] {
 
 /**
  * LocalStorage fallback search - Comprehensive cross-category search
- * ALWAYS searches ALL categories from localStorage
  */
 function searchFromLocalStorage(query: string): SearchItem[] {
   const results: SearchItem[] = [];
@@ -519,7 +503,6 @@ function searchFromLocalStorage(query: string): SearchItem[] {
   console.log('[SearchFromLocalStorage] Searching for:', query, '(ALL categories)');
 
   try {
-    // Get ALL data from all categories (with flexible key matching)
     const customers = getLocalStorageData('customers');
     const companies = getLocalStorageData('companies');
     const transactions = getLocalStorageData('transactions');
@@ -543,7 +526,6 @@ function searchFromLocalStorage(query: string): SearchItem[] {
     });
 
     // Comprehensive search maps - search ALL fields for each category
-    // Note: Check BOTH lowercase (snake_case) AND camelCase field names
     const searchMaps: Record<string, (item: any) => boolean> = {
       customers: (item) => 
         (item.name && item.name.toLowerCase().includes(q)) ||
@@ -569,16 +551,11 @@ function searchFromLocalStorage(query: string): SearchItem[] {
         (item.industry && item.industry.toLowerCase().includes(q)) ||
         (item.memo && item.memo.toLowerCase().includes(q)) ||
         (item.par_value && String(item.par_value).toLowerCase().includes(q)) ||
-        (item.parValue && String(item.parValue).toLowerCase().includes(q)) ||
         (item.total_shares && String(item.total_shares).toLowerCase().includes(q)) ||
-        (item.totalShares && String(item.totalShares).toLowerCase().includes(q)) ||
         (item.listing_status && item.listing_status.toLowerCase().includes(q)) ||
-        (item.listingStatus && item.listingStatus.toLowerCase().includes(q)) ||
-        (item.company_name && item.company_name.toLowerCase().includes(q)) ||
-        (item.companyName && item.companyName.toLowerCase().includes(q)),
+        (item.company_name && item.company_name.toLowerCase().includes(q)),
       transactions: (item) =>
         (item.stock_name && item.stock_name.toLowerCase().includes(q)) ||
-        (item.stockName && item.stockName.toLowerCase().includes(q)) ||
         (item.customer_name && item.customer_name.toLowerCase().includes(q)) ||
         (item.customerName && item.customerName.toLowerCase().includes(q)) ||
         (item.buyer && item.buyer.toLowerCase().includes(q)) ||
@@ -587,20 +564,15 @@ function searchFromLocalStorage(query: string): SearchItem[] {
         (item.memo && item.memo.toLowerCase().includes(q)) ||
         (item.date && item.date.toLowerCase().includes(q)) ||
         (item.transaction_type && item.transaction_type.toLowerCase().includes(q)) ||
-        (item.transactionType && item.transactionType.toLowerCase().includes(q)) ||
         (item.price && String(item.price).toLowerCase().includes(q)) ||
         (item.quantity && String(item.quantity).toLowerCase().includes(q)),
       priceChecks: (item) =>
         (item.stock_name && item.stock_name.toLowerCase().includes(q)) ||
-        (item.stockName && item.stockName.toLowerCase().includes(q)) ||
         (item.holder_company && item.holder_company.toLowerCase().includes(q)) ||
-        (item.holderCompany && item.holderCompany.toLowerCase().includes(q)) ||
         (item.memo && item.memo.toLowerCase().includes(q)) ||
         (item.date && item.date.toLowerCase().includes(q)) ||
         (item.current_price && String(item.current_price).toLowerCase().includes(q)) ||
-        (item.currentPrice && String(item.currentPrice).toLowerCase().includes(q)) ||
         (item.holder_name && item.holder_name.toLowerCase().includes(q)) ||
-        (item.holderName && item.holderName.toLowerCase().includes(q)) ||
         (item.custodian && item.custodian.toLowerCase().includes(q)),
       requests: (item) =>
         (item.client_name && item.client_name.toLowerCase().includes(q)) ||
@@ -610,60 +582,10 @@ function searchFromLocalStorage(query: string): SearchItem[] {
         (item.contact && item.contact.toLowerCase().includes(q)) ||
         (item.memo && item.memo.toLowerCase().includes(q)) ||
         (item.desired_price && String(item.desired_price).toLowerCase().includes(q)) ||
-        (item.desiredPrice && String(item.desiredPrice).toLowerCase().includes(q)) ||
         (item.request_date && item.request_date.toLowerCase().includes(q)) ||
-        (item.requestDate && item.requestDate.toLowerCase().includes(q)) ||
         (item.status && item.status.toLowerCase().includes(q)) ||
         (item.request_type && item.request_type.toLowerCase().includes(q)) ||
-        (item.requestType && item.requestType.toLowerCase().includes(q)) ||
         (item.quantity && String(item.quantity).toLowerCase().includes(q)),
-      accounts: (item) =>
-        (item.bank_name && item.bank_name.toLowerCase().includes(q)) ||
-        (item.bankName && item.bankName.toLowerCase().includes(q)) ||
-        (item.account_number && item.account_number.toLowerCase().includes(q)) ||
-        (item.accountNumber && item.accountNumber.toLowerCase().includes(q)) ||
-        (item.account_holder && item.account_holder.toLowerCase().includes(q)) ||
-        (item.accountHolder && item.accountHolder.toLowerCase().includes(q)) ||
-        (item.purpose && item.purpose.toLowerCase().includes(q)) ||
-        (item.memo && item.memo.toLowerCase().includes(q)) ||
-        (item.account_name && item.account_name.toLowerCase().includes(q)) ||
-        (item.accountName && item.accountName.toLowerCase().includes(q)),
-      memos: (item) =>
-        (item.title && item.title.toLowerCase().includes(q)) ||
-        (item.content && item.content.toLowerCase().includes(q)) ||
-        (item.date && item.date.toLowerCase().includes(q)) ||
-        (item.created_at && item.created_at.toLowerCase().includes(q)) ||
-        (item.createdAt && item.createdAt.toLowerCase().includes(q)) ||
-        (item.tags && String(item.tags).toLowerCase().includes(q)) ||
-        (item.category && item.category.toLowerCase().includes(q)),
-      tasks: (item) =>
-        (item.title && item.title.toLowerCase().includes(q)) ||
-        (item.description && item.description.toLowerCase().includes(q)) ||
-        (item.client && item.client.toLowerCase().includes(q)) ||
-        (item.related_stock && item.related_stock.toLowerCase().includes(q)) ||
-        (item.relatedStock && item.relatedStock.toLowerCase().includes(q)) ||
-        (item.memo && item.memo.toLowerCase().includes(q)) ||
-        (item.status && item.status.toLowerCase().includes(q)) ||
-        (item.due_date && item.due_date.toLowerCase().includes(q)) ||
-        (item.dueDate && item.dueDate.toLowerCase().includes(q)) ||
-        (item.priority && item.priority.toLowerCase().includes(q)),
-      diary: (item) =>
-        (item.content && item.content.toLowerCase().includes(q)) ||
-        (item.date && item.date.toLowerCase().includes(q)) ||
-        (item.mood && item.mood.toLowerCase().includes(q)) ||
-        (item.weather && item.weather.toLowerCase().includes(q)) ||
-        (item.title && item.title.toLowerCase().includes(q)),
-    };tem.custodian.toLowerCase().includes(q)),
-      requests: (item) =>
-        (item.client_name && item.client_name.toLowerCase().includes(q)) ||
-        (item.clientName && item.clientName.toLowerCase().includes(q)) ||
-        (item.target_stock && item.target_stock.toLowerCase().includes(q)) ||
-        (item.targetStock && item.targetStock.toLowerCase().includes(q)) ||
-        (item.contact && item.contact.toLowerCase().includes(q)) ||
-        (item.memo && item.memo.toLowerCase().includes(q)) ||
-        (item.desired_price && String(item.desired_price).toLowerCase().includes(q)) ||
-        (item.request_date && item.request_date.toLowerCase().includes(q)) ||
-        (item.status && item.status.toLowerCase().includes(q)),
       accounts: (item) =>
         (item.bank_name && item.bank_name.toLowerCase().includes(q)) ||
         (item.account_number && item.account_number.toLowerCase().includes(q)) ||
@@ -676,7 +598,7 @@ function searchFromLocalStorage(query: string): SearchItem[] {
         (item.content && item.content.toLowerCase().includes(q)) ||
         (item.date && item.date.toLowerCase().includes(q)) ||
         (item.created_at && item.created_at.toLowerCase().includes(q)) ||
-        (item.tags && item.tags.toLowerCase().includes(q)) ||
+        (item.tags && String(item.tags).toLowerCase().includes(q)) ||
         (item.category && item.category.toLowerCase().includes(q)),
       tasks: (item) =>
         (item.title && item.title.toLowerCase().includes(q)) ||
@@ -688,18 +610,12 @@ function searchFromLocalStorage(query: string): SearchItem[] {
         (item.status && item.status.toLowerCase().includes(q)) ||
         (item.due_date && item.due_date.toLowerCase().includes(q)) ||
         (item.priority && item.priority.toLowerCase().includes(q)),
-      diary: (item) =>
+      diaryEntries: (item) =>
         (item.content && item.content.toLowerCase().includes(q)) ||
         (item.date && item.date.toLowerCase().includes(q)) ||
         (item.mood && item.mood.toLowerCase().includes(q)) ||
         (item.weather && item.weather.toLowerCase().includes(q)) ||
         (item.title && item.title.toLowerCase().includes(q)),
-      fee: (item) =>
-        (item.stock_name && item.stock_name.toLowerCase().includes(q)) ||
-        (item.company_name && item.company_name.toLowerCase().includes(q)) ||
-        (item.customer_name && item.customer_name.toLowerCase().includes(q)) ||
-        (item.memo && item.memo.toLowerCase().includes(q)) ||
-        (item.date && item.date.toLowerCase().includes(q)),
     };
 
     const typeMaps: Record<string, string> = {
@@ -711,25 +627,26 @@ function searchFromLocalStorage(query: string): SearchItem[] {
       accounts: 'account',
       memos: 'memo',
       tasks: 'task',
-      diary: 'diary',
-      fee: 'fee',
+      diaryEntries: 'diary',
+    };
+
+    const storageKeys: Record<string, string> = {
+      customers: 'customers',
+      companies: 'companies',
+      transactions: 'transactions',
+      priceChecks: 'priceChecks',
+      requests: 'clientRequests',
+      accounts: 'accounts',
+      memos: 'memos',
+      tasks: 'tasks',
+      diaryEntries: 'diaryEntries',
     };
 
     for (const [key, storageKey] of Object.entries(storageKeys)) {
-      const dataStr = localStorage.getItem(storageKey);
-      if (!dataStr) continue;
-      
-      try {
-        const items = JSON.parse(dataStr);
-        const matchedItems = items.filter(searchMaps[key]);
-        console.log(`[SearchFromLocalStorage] ${key}: ${matchedItems.length} matched`);
-        
-        matchedItems.forEach((item: any) => {
-          results.push(createSearchItem(typeMaps[key], item));
-        });
-      } catch (e) {
-        console.error(`[SearchFromLocalStorage] Error parsing ${storageKey}:`, e);
-      }
+      const data = getLocalStorageData(storageKey);
+      const matched = data.filter(searchMaps[key]);
+      console.log(`[SearchFromLocalStorage] ${key}: ${matched.length} matched`);
+      matched.forEach((item: any) => results.push(createSearchItem(typeMaps[key], item)));
     }
 
     // Sort by relevance
@@ -748,7 +665,6 @@ function searchFromLocalStorage(query: string): SearchItem[] {
 
     console.log('[SearchFromLocalStorage] Total results:', results.length, 'from ALL categories');
     
-    // Log breakdown by category
     const byCategory = results.reduce((acc, item) => {
       acc[item.categoryLabel] = (acc[item.categoryLabel] || 0) + 1;
       return acc;
