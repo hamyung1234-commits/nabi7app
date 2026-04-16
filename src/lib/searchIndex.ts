@@ -15,6 +15,7 @@ import {
   tasksService,
   diaryEntriesService,
 } from './supabaseService';
+import { isSupabaseConfigured } from './supabase';
 
 export interface SearchItem {
   id: string;
@@ -149,19 +150,8 @@ function createSearchItem(type: string, data: any): SearchItem {
   };
 }
 
-// Check if Supabase is properly configured with valid credentials
-function isSupabaseConfigured(): boolean {
-  const url = import.meta.env.VITE_SUPABASE_URL;
-  const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  
-  // Must have valid, non-placeholder values
-  return !!(
-    url && key &&
-    url !== '' && key !== '' &&
-    !url.includes('placeholder') &&
-    !key.includes('placeholder')
-  );
-}
+// Check if Supabase is properly configured (imported from supabase.ts)
+// This function was removed - now uses the centralized function from supabase.ts
 
 /**
  * Initialize search index from localStorage FIRST (always available)
@@ -225,7 +215,7 @@ export async function initSearchIndexFromDB(): Promise<void> {
     console.log('[SearchIndex] Added', searchIndex.length, 'items from localStorage');
 
     // THEN try to add Supabase data (supplementary)
-    if (isSupabaseConfigured()) {
+    if (isSupabaseConfigured) {
       console.log('[SearchIndex] Supabase configured, fetching additional data...');
       
       const [
@@ -507,7 +497,7 @@ export async function searchFromDB(query: string): Promise<SearchItem[]> {
   console.log('[SearchFromDB] localStorage results:', results.length);
 
   // STEP 2: If Supabase is configured, add additional results from Supabase
-  if (isSupabaseConfigured() && results.length === 0) {
+  if (isSupabaseConfigured && results.length === 0) {
     console.log('[SearchFromDB] No localStorage results, checking Supabase...');
     
     try {

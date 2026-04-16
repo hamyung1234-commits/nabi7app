@@ -223,6 +223,7 @@ export const companiesService = {
 // =====================================================
 export const transactionsService = {
   async getAll(): Promise<Transaction[]> {
+    if (!supabase || !isSupabaseConfigured) return [];
     const { data, error } = await supabase
       .from('transactions')
       .select('*')
@@ -232,6 +233,7 @@ export const transactionsService = {
   },
 
   async create(transaction: Omit<Transaction, 'id' | 'created_at' | 'updated_at'>): Promise<Transaction> {
+    if (!supabase || !isSupabaseConfigured) throw new Error('Supabase not configured');
     const { data, error } = await supabase
       .from('transactions')
       .insert([transaction])
@@ -242,6 +244,7 @@ export const transactionsService = {
   },
 
   async update(id: string, transaction: Partial<Transaction>): Promise<Transaction> {
+    if (!supabase || !isSupabaseConfigured) throw new Error('Supabase not configured');
     const { data, error } = await supabase
       .from('transactions')
       .update({ ...transaction, updated_at: new Date().toISOString() })
@@ -253,6 +256,7 @@ export const transactionsService = {
   },
 
   async delete(id: string): Promise<void> {
+    if (!supabase || !isSupabaseConfigured) throw new Error('Supabase not configured');
     const { error } = await supabase.from('transactions').delete().eq('id', id);
     if (error) throw error;
   },
@@ -263,6 +267,7 @@ export const transactionsService = {
 // =====================================================
 export const priceChecksService = {
   async getAll(): Promise<PriceCheck[]> {
+    if (!supabase || !isSupabaseConfigured) return [];
     const { data, error } = await supabase
       .from('price_checks')
       .select('*')
@@ -272,6 +277,7 @@ export const priceChecksService = {
   },
 
   async create(priceCheck: Omit<PriceCheck, 'id' | 'created_at' | 'updated_at'>): Promise<PriceCheck> {
+    if (!supabase || !isSupabaseConfigured) throw new Error('Supabase not configured');
     const { data, error } = await supabase
       .from('price_checks')
       .insert([priceCheck])
@@ -282,6 +288,7 @@ export const priceChecksService = {
   },
 
   async update(id: string, priceCheck: Partial<PriceCheck>): Promise<PriceCheck> {
+    if (!supabase || !isSupabaseConfigured) throw new Error('Supabase not configured');
     const { data, error } = await supabase
       .from('price_checks')
       .update({ ...priceCheck, updated_at: new Date().toISOString() })
@@ -293,6 +300,7 @@ export const priceChecksService = {
   },
 
   async delete(id: string): Promise<void> {
+    if (!supabase || !isSupabaseConfigured) throw new Error('Supabase not configured');
     const { error } = await supabase.from('price_checks').delete().eq('id', id);
     if (error) throw error;
   },
@@ -303,6 +311,7 @@ export const priceChecksService = {
 // =====================================================
 export const clientRequestsService = {
   async getAll(): Promise<ClientRequest[]> {
+    if (!supabase || !isSupabaseConfigured) return [];
     const { data, error } = await supabase
       .from('client_requests')
       .select('*')
@@ -312,6 +321,7 @@ export const clientRequestsService = {
   },
 
   async create(request: Omit<ClientRequest, 'id' | 'created_at' | 'updated_at'>): Promise<ClientRequest> {
+    if (!supabase || !isSupabaseConfigured) throw new Error('Supabase not configured');
     const { data, error } = await supabase
       .from('client_requests')
       .insert([request])
@@ -322,6 +332,7 @@ export const clientRequestsService = {
   },
 
   async update(id: string, request: Partial<ClientRequest>): Promise<ClientRequest> {
+    if (!supabase || !isSupabaseConfigured) throw new Error('Supabase not configured');
     const { data, error } = await supabase
       .from('client_requests')
       .update({ ...request, updated_at: new Date().toISOString() })
@@ -333,6 +344,7 @@ export const clientRequestsService = {
   },
 
   async delete(id: string): Promise<void> {
+    if (!supabase || !isSupabaseConfigured) throw new Error('Supabase not configured');
     const { error } = await supabase.from('client_requests').delete().eq('id', id);
     if (error) throw error;
   },
@@ -343,6 +355,7 @@ export const clientRequestsService = {
 // =====================================================
 export const accountsService = {
   async getAll(): Promise<Account[]> {
+    if (!supabase || !isSupabaseConfigured) return [];
     const { data, error } = await supabase
       .from('accounts')
       .select('*')
@@ -352,6 +365,7 @@ export const accountsService = {
   },
 
   async create(account: Omit<Account, 'id' | 'created_at' | 'updated_at'>): Promise<Account> {
+    if (!supabase || !isSupabaseConfigured) throw new Error('Supabase not configured');
     const { data, error } = await supabase
       .from('accounts')
       .insert([account])
@@ -362,6 +376,7 @@ export const accountsService = {
   },
 
   async update(id: string, account: Partial<Account>): Promise<Account> {
+    if (!supabase || !isSupabaseConfigured) throw new Error('Supabase not configured');
     const { data, error } = await supabase
       .from('accounts')
       .update({ ...account, updated_at: new Date().toISOString() })
@@ -373,6 +388,7 @@ export const accountsService = {
   },
 
   async delete(id: string): Promise<void> {
+    if (!supabase || !isSupabaseConfigured) throw new Error('Supabase not configured');
     const { error } = await supabase.from('accounts').delete().eq('id', id);
     if (error) throw error;
   },
@@ -383,6 +399,7 @@ export const accountsService = {
 // =====================================================
 export const diaryEntriesService = {
   async getAll(): Promise<DiaryEntry[]> {
+    if (!supabase || !isSupabaseConfigured) return [];
     const { data, error } = await supabase
       .from('diary_entries')
       .select('*')
@@ -392,6 +409,7 @@ export const diaryEntriesService = {
   },
 
   async create(entry: Omit<DiaryEntry, 'id' | 'created_at' | 'updated_at'>): Promise<DiaryEntry> {
+    if (!supabase || !isSupabaseConfigured) throw new Error('Supabase not configured');
     const { data, error } = await supabase
       .from('diary_entries')
       .insert([entry])
@@ -402,6 +420,7 @@ export const diaryEntriesService = {
   },
 
   async update(id: string, entry: Partial<DiaryEntry>): Promise<DiaryEntry> {
+    if (!supabase || !isSupabaseConfigured) throw new Error('Supabase not configured');
     const { data, error } = await supabase
       .from('diary_entries')
       .update({ ...entry, updated_at: new Date().toISOString() })
@@ -413,6 +432,7 @@ export const diaryEntriesService = {
   },
 
   async delete(id: string): Promise<void> {
+    if (!supabase || !isSupabaseConfigured) throw new Error('Supabase not configured');
     const { error } = await supabase.from('diary_entries').delete().eq('id', id);
     if (error) throw error;
   },
@@ -423,6 +443,7 @@ export const diaryEntriesService = {
 // =====================================================
 export const memosService = {
   async getAll(): Promise<Memo[]> {
+    if (!supabase || !isSupabaseConfigured) return [];
     const { data, error } = await supabase
       .from('memos')
       .select('*')
@@ -432,6 +453,7 @@ export const memosService = {
   },
 
   async create(memo: Omit<Memo, 'id' | 'created_at' | 'updated_at'>): Promise<Memo> {
+    if (!supabase || !isSupabaseConfigured) throw new Error('Supabase not configured');
     const { data, error } = await supabase
       .from('memos')
       .insert([memo])
@@ -442,6 +464,7 @@ export const memosService = {
   },
 
   async update(id: string, memo: Partial<Memo>): Promise<Memo> {
+    if (!supabase || !isSupabaseConfigured) throw new Error('Supabase not configured');
     const { data, error } = await supabase
       .from('memos')
       .update({ ...memo, updated_at: new Date().toISOString() })
@@ -453,6 +476,7 @@ export const memosService = {
   },
 
   async delete(id: string): Promise<void> {
+    if (!supabase || !isSupabaseConfigured) throw new Error('Supabase not configured');
     const { error } = await supabase.from('memos').delete().eq('id', id);
     if (error) throw error;
   },
@@ -463,6 +487,7 @@ export const memosService = {
 // =====================================================
 export const tasksService = {
   async getAll(): Promise<Task[]> {
+    if (!supabase || !isSupabaseConfigured) return [];
     const { data, error } = await supabase
       .from('tasks')
       .select('*')
@@ -472,6 +497,7 @@ export const tasksService = {
   },
 
   async create(task: Omit<Task, 'id' | 'created_at' | 'updated_at'>): Promise<Task> {
+    if (!supabase || !isSupabaseConfigured) throw new Error('Supabase not configured');
     const { data, error } = await supabase
       .from('tasks')
       .insert([task])
@@ -482,6 +508,7 @@ export const tasksService = {
   },
 
   async update(id: string, task: Partial<Task>): Promise<Task> {
+    if (!supabase || !isSupabaseConfigured) throw new Error('Supabase not configured');
     const { data, error } = await supabase
       .from('tasks')
       .update({ ...task, updated_at: new Date().toISOString() })
@@ -493,6 +520,7 @@ export const tasksService = {
   },
 
   async delete(id: string): Promise<void> {
+    if (!supabase || !isSupabaseConfigured) throw new Error('Supabase not configured');
     const { error } = await supabase.from('tasks').delete().eq('id', id);
     if (error) throw error;
   },
@@ -510,6 +538,8 @@ export interface SearchResult {
 }
 
 export async function globalSearch(query: string): Promise<SearchResult[]> {
+  if (!supabase || !isSupabaseConfigured) return [];
+  
   const results: SearchResult[] = [];
   const q = query.toLowerCase();
 
@@ -670,6 +700,7 @@ export async function globalSearch(query: string): Promise<SearchResult[]> {
 // =====================================================
 export const countsService = {
   async getCustomersCount(): Promise<number> {
+    if (!supabase || !isSupabaseConfigured) return 0;
     const { count, error } = await supabase
       .from('customers')
       .select('*', { count: 'exact', head: true });
@@ -678,6 +709,7 @@ export const countsService = {
   },
 
   async getCompaniesCount(): Promise<number> {
+    if (!supabase || !isSupabaseConfigured) return 0;
     const { count, error } = await supabase
       .from('companies')
       .select('*', { count: 'exact', head: true });
@@ -686,6 +718,7 @@ export const countsService = {
   },
 
   async getTransactionsCount(): Promise<number> {
+    if (!supabase || !isSupabaseConfigured) return 0;
     const { count, error } = await supabase
       .from('transactions')
       .select('*', { count: 'exact', head: true });
@@ -694,6 +727,7 @@ export const countsService = {
   },
 
   async getPriceChecksCount(): Promise<number> {
+    if (!supabase || !isSupabaseConfigured) return 0;
     const { count, error } = await supabase
       .from('price_checks')
       .select('*', { count: 'exact', head: true });
@@ -702,6 +736,7 @@ export const countsService = {
   },
 
   async getClientRequestsCount(): Promise<number> {
+    if (!supabase || !isSupabaseConfigured) return 0;
     const { count, error } = await supabase
       .from('client_requests')
       .select('*', { count: 'exact', head: true });
@@ -710,6 +745,7 @@ export const countsService = {
   },
 
   async getAccountsCount(): Promise<number> {
+    if (!supabase || !isSupabaseConfigured) return 0;
     const { count, error } = await supabase
       .from('accounts')
       .select('*', { count: 'exact', head: true });
@@ -718,6 +754,7 @@ export const countsService = {
   },
 
   async getMemosCount(): Promise<number> {
+    if (!supabase || !isSupabaseConfigured) return 0;
     const { count, error } = await supabase
       .from('memos')
       .select('*', { count: 'exact', head: true });
@@ -726,6 +763,7 @@ export const countsService = {
   },
 
   async getTasksCount(): Promise<number> {
+    if (!supabase || !isSupabaseConfigured) return 0;
     const { count, error } = await supabase
       .from('tasks')
       .select('*', { count: 'exact', head: true });
@@ -734,6 +772,7 @@ export const countsService = {
   },
 
   async getDiaryEntriesCount(): Promise<number> {
+    if (!supabase || !isSupabaseConfigured) return 0;
     const { count, error } = await supabase
       .from('diary_entries')
       .select('*', { count: 'exact', head: true });
@@ -742,6 +781,7 @@ export const countsService = {
   },
 
   async getInProgressRequestsCount(): Promise<number> {
+    if (!supabase || !isSupabaseConfigured) return 0;
     const { count, error } = await supabase
       .from('client_requests')
       .select('*', { count: 'exact', head: true })
@@ -751,6 +791,8 @@ export const countsService = {
   },
 
   async getAllCounts(): Promise<Record<string, number>> {
+    if (!supabase || !isSupabaseConfigured) return {};
+    
     try {
       const [
         customersCount,
@@ -802,6 +844,10 @@ export const countsService = {
 // Data Migration (from localStorage to Supabase)
 // =====================================================
 export async function migrateFromLocalStorage(): Promise<{ success: boolean; message: string }> {
+  if (!supabase || !isSupabaseConfigured) {
+    return { success: false, message: 'Supabase not configured' };
+  }
+  
   try {
     const STORAGE_KEY = 'nabi-data-1.0';
     
