@@ -445,7 +445,17 @@ export async function searchFromDB(query: string): Promise<SearchItem[]> {
     );
     matchedDiary.forEach((d: any) => results.push(createSearchItem('diary', d)));
 
-    // Sort by relevance
+    // CRITICAL FIX: Fall back to localStorage if no matches found in Supabase
+    // This ensures search works even when Supabase has data but search query doesn't match
+    const matchedTotal = matchedCustomers.length + matchedCompanies.length +
+                        matchedTransactions.length + matchedPriceChecks.length +
+                        matchedRequests.length + matchedAccounts.length +
+                        matchedMemos.length + matchedTasks.length + matchedDiary.length;
+
+    if (matchedTotal === 0) {
+      console.log('[SearchFromDB] No matches in Supabase, trying localStorage fallback...');
+      return searchFromLocalStorage(query);
+    }
     results.sort((a, b) => {
       const aTitle = a.title.toLowerCase();
       const bTitle = b.title.toLowerCase();

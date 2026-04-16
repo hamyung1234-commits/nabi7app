@@ -4,7 +4,7 @@ import path from 'path'
 
 // Base path: GitHub Pages repository name
 // Use VITE_BASE_URL env var to override for other hosting
-const base = process.env.VITE_BASE_URL || '/nabi-assistant/';
+const base = process.env.VITE_BASE_URL || '/';
 
 export default defineConfig({
   plugins: [react()],
