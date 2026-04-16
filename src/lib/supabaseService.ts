@@ -538,9 +538,10 @@ export interface SearchResult {
 }
 
 export async function globalSearch(query: string): Promise<SearchResult[]> {
-  if (!supabase || !isSupabaseConfigured) return [];
-  
   const results: SearchResult[] = [];
+  
+  if (!supabase || !isSupabaseConfigured) return results;
+  
   const q = query.toLowerCase();
 
   try {
@@ -791,8 +792,6 @@ export const countsService = {
   },
 
   async getAllCounts(): Promise<Record<string, number>> {
-    if (!supabase || !isSupabaseConfigured) return {};
-    
     try {
       const [
         customersCount,
@@ -847,7 +846,7 @@ export async function migrateFromLocalStorage(): Promise<{ success: boolean; mes
   if (!supabase || !isSupabaseConfigured) {
     return { success: false, message: 'Supabase not configured' };
   }
-  
+
   try {
     const STORAGE_KEY = 'nabi-data-1.0';
     
@@ -864,37 +863,72 @@ export async function migrateFromLocalStorage(): Promise<{ success: boolean; mes
       tasks: JSON.parse(localStorage.getItem(`${STORAGE_KEY}-tasks`) || '[]'),
     };
 
-    // Convert camelCase to snake_case for Supabase
-    const migrateRecords = async (tableName: string, records: any[]) => {
-      if (records.length === 0) return;
-      
-      const convertedRecords = records.map(r => {
-        const converted: any = {};
-        for (const key in r) {
-          const snakeKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
-          converted[snakeKey] = r[key];
-        }
-        return converted;
-      });
+    // Migrate each table
+    const results: string[] = [];
 
-      const { error } = await supabase.from(tableName).insert(convertedRecords);
-      if (error) console.error(`Error migrating ${tableName}:`, error);
+    if (localData.customers.length > 0) {
+      const { error } = await supabase.from('customers').insert(localData.customers);
+      if (error) throw new Error(`customers: ${error.message}`);
+      results.push(`customers: ${localData.customers.length}`);
+    }
+
+    if (localData.companies.length > 0) {
+      const { error } = await supabase.from('companies').insert(localData.companies);
+      if (error) throw new Error(`companies: ${error.message}`);
+      results.push(`companies: ${localData.companies.length}`);
+    }
+
+    if (localData.transactions.length > 0) {
+      const { error } = await supabase.from('transactions').insert(localData.transactions);
+      if (error) throw new Error(`transactions: ${error.message}`);
+      results.push(`transactions: ${localData.transactions.length}`);
+    }
+
+    if (localData.priceChecks.length > 0) {
+      const { error } = await supabase.from('price_checks').insert(localData.priceChecks);
+      if (error) throw new Error(`price_checks: ${error.message}`);
+      results.push(`price_checks: ${localData.priceChecks.length}`);
+    }
+
+    if (localData.clientRequests.length > 0) {
+      const { error } = await supabase.from('client_requests').insert(localData.clientRequests);
+      if (error) throw new Error(`client_requests: ${error.message}`);
+      results.push(`client_requests: ${localData.clientRequests.length}`);
+    }
+
+    if (localData.accounts.length > 0) {
+      const { error } = await supabase.from('accounts').insert(localData.accounts);
+      if (error) throw new Error(`accounts: ${error.message}`);
+      results.push(`accounts: ${localData.accounts.length}`);
+    }
+
+    if (localData.diaryEntries.length > 0) {
+      const { error } = await supabase.from('diary_entries').insert(localData.diaryEntries);
+      if (error) throw new Error(`diary_entries: ${error.message}`);
+      results.push(`diary_entries: ${localData.diaryEntries.length}`);
+    }
+
+    if (localData.memos.length > 0) {
+      const { error } = await supabase.from('memos').insert(localData.memos);
+      if (error) throw new Error(`memos: ${error.message}`);
+      results.push(`memos: ${localData.memos.length}`);
+    }
+
+    if (localData.tasks.length > 0) {
+      const { error } = await supabase.from('tasks').insert(localData.tasks);
+      if (error) throw new Error(`tasks: ${error.message}`);
+      results.push(`tasks: ${localData.tasks.length}`);
+    }
+
+    return {
+      success: true,
+      message: `Successfully migrated: ${results.join(', ') || 'nothing'}`
     };
-
-    // Migrate all tables
-    await migrateRecords('customers', localData.customers);
-    await migrateRecords('companies', localData.companies);
-    await migrateRecords('transactions', localData.transactions);
-    await migrateRecords('price_checks', localData.priceChecks);
-    await migrateRecords('client_requests', localData.clientRequests);
-    await migrateRecords('accounts', localData.accounts);
-    await migrateRecords('diary_entries', localData.diaryEntries);
-    await migrateRecords('memos', localData.memos);
-    await migrateRecords('tasks', localData.tasks);
-
-    return { success: true, message: 'Successfully migrated all data to Supabase!' };
   } catch (error) {
     console.error('Migration error:', error);
-    return { success: false, message: 'Migration failed. Please check console for details.' };
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Unknown error'
+    };
   }
 }
