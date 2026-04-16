@@ -149,11 +149,13 @@ function createSearchItem(type: string, data: any): SearchItem {
   };
 }
 
-// Check if Supabase is configured - ALWAYS check for real credentials
+// Check if Supabase is configured - ALWAYS returns true now
+// localStorage is always the primary data source
 function isSupabaseConfigured(): boolean {
-  // Check if we have valid Supabase credentials
-  // We always have the URL hardcoded in supabase.ts
-  return true; // Always try Supabase, fallback to localStorage if it fails
+  // Always return true - we want to try Supabase when available
+  // But localStorage is always the primary data source
+  // If Supabase fails, results will still come from localStorage
+  return true;
 }
 
 /**
