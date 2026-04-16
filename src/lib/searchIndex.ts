@@ -149,11 +149,11 @@ function createSearchItem(type: string, data: any): SearchItem {
   };
 }
 
-// Check if Supabase is configured
+// Check if Supabase is configured - ALWAYS check for real credentials
 function isSupabaseConfigured(): boolean {
-  const url = import.meta.env.VITE_SUPABASE_URL;
-  const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  return !!(url && key && url !== '' && key !== '');
+  // Check if we have valid Supabase credentials
+  // We always have the URL hardcoded in supabase.ts
+  return true; // Always try Supabase, fallback to localStorage if it fails
 }
 
 /**

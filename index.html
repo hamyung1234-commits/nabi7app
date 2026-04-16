@@ -2,7 +2,7 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/nabi-icon.svg" />
+    <link rel="icon" type="image/svg+xml" href="/nabi7app/nabi-icon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="나비 (나의 비서) - 언제나 열려있는 나만의 업무 비서. 비상장주식 중개 업무용 일일 메모 + 자동분류 + 계산기 통합 플랫폼" />
     <title>나비 - 나의 비서</title>
@@ -22,19 +22,25 @@
         color: #e2e8f0;
       }
       /* Loading state */
+      #root:empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
       #root:empty::after {
         content: '로딩 중...';
         display: flex;
         align-items: center;
         justify-content: center;
-        height: 100%;
+        height: 100vh;
         font-size: 1.25rem;
         color: #94a3b8;
       }
     </style>
+    <script type="module" crossorigin src="/nabi7app/assets/index-BnE53DUg.js"></script>
+    <link rel="stylesheet" crossorigin href="/nabi7app/assets/index-DWKwHe-o.css">
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
