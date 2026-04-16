@@ -1,6 +1,7 @@
 [build]
   command = "npm run build"
   publish = "dist"
+  ignore = "echo skip"
 
 [build.environment]
   NODE_VERSION = "20"
@@ -13,8 +14,3 @@
     X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
