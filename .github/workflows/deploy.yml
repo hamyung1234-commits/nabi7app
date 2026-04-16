@@ -36,7 +36,7 @@ jobs:
       - name: Build
         run: npm run build
         
-      - name: Fix asset paths
+      - name: Fix asset paths for nabi7app
         run: node post-build-fix.js
         
       - name: Setup Pages
