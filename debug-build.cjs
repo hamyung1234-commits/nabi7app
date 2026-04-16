@@ -1,33 +1,43 @@
 #!/usr/bin/env node
 // Debug build script
-const { execSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
+const { spawn } = require('child_process');
 
-console.log('=== NABI Debug Build ===\n');
+console.log('Starting debug build...');
 
-try {
-  console.log('Running vite build with debugging...');
-  const output = execSync('npx vite build --debug 2>&1 || echo "Exit code: "$?', { 
-    encoding: 'utf8', 
-    timeout: 300000,
-    maxBuffer: 50 * 1024 * 1024
-  });
-  console.log(output);
-  
-  // Check dist folder after build
-  const distPath = path.join(__dirname, 'dist');
-  if (fs.existsSync(distPath)) {
-    console.log('\n✓ dist folder exists');
-    const stats = fs.statSync(distPath);
-    console.log(`  isDirectory: ${stats.isDirectory()}`);
-  } else {
-    console.log('\n✗ dist folder not found');
-  }
-  
-} catch (error) {
-  console.log('Error output:', error.stdout || '');
-  console.log('Error stderr:', error.stderr || '');
-  console.log('Error message:', error.message);
+const child = spawn('npx', ['vite', 'build', '--debug'], {
+  stdio: ['inherit', 'pipe', 'pipe']
+});
+
+let stdout = '';
+let stderr = '';
+
+child.stdout.on('data', (data) => {
+  const text = data.toString();
+  stdout += text;
+  process.stdout.write(text);
+});
+
+child.stderr.on('data', (data) => {
+  const text = data.toString();
+  stderr += text;
+  process.stderr.write(text);
+});
+
+child.on('close', (code) => {
+  console.log('\n--- Build finished with code:', code);
+  console.log('stdout length:', stdout.length);
+  console.log('stderr length:', stderr.length);
+  process.exit(code || 0);
+});
+
+child.on('error', (err) => {
+  console.error('Spawn error:', err);
   process.exit(1);
-}
+});
+
+// Timeout after 5 minutes
+setTimeout(() => {
+  console.log('Build timeout - killing process');
+  child.kill();
+  process.exit(1);
+}, 300000);
