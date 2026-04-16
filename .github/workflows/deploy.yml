@@ -35,9 +35,10 @@ jobs:
         
       - name: Build
         run: npm run build
-        env:
-          VITE_BASE_URL: /-nabi-app-/
-          
+        
+      - name: Fix asset paths for GitHub Pages subdirectory
+        run: node post-build-fix.js
+        
       - name: Setup Pages
         uses: actions/configure-pages@v4
         
