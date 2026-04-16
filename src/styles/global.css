@@ -1266,31 +1266,6 @@ body {
 /* ============================================
    Touch Target Minimum (44x44px) - Global
    ============================================ */
-@media (max-width: 1023px) {
-  /* Ensure minimum touch targets on mobile */
-  button,
-  [role="button"],
-  input[type="button"],
-  input[type="submit"],
-  input[type="reset"],
-  .btn {
-    min-height: 44px;
-    min-width: 44px;
-  }
-
-  a {
-    min-height: 44px;
-    display: flex;
-    align-items: center;
-  }
-
-  /* Mobile Menu Button - Show on tablet and below */
-  .mobile-menu-btn {
-    display: flex !important;
-  }
-}
-
-/* Touch targets for mobile */
 button,
 .btn,
 a,
