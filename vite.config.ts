@@ -2,9 +2,9 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
-// Base path: GitHub Pages uses subdirectory /-nabi-app-/
+// Base path: GitHub Pages repository name
 // Use VITE_BASE_URL env var to override for other hosting
-const base = process.env.VITE_BASE_URL || '/-nabi-app-/';
+const base = process.env.VITE_BASE_URL || '/nabi-assistant/';
 
 export default defineConfig({
   plugins: [react()],
