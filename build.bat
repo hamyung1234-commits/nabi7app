@@ -1,4 +1,6 @@
 @echo off
-chcp 65001 >nul
-cd /d "%~dp0"
+REM Build script for Windows
+call npm install
 call npm run build
+call node post-build-fix.js
+echo Build complete

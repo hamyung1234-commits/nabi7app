@@ -5,8 +5,8 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Fix asset paths for Surge deployment
-// Change /-nabi-app-/ to / for root deployment
+// Fix asset paths for GitHub Pages deployment (nabi-app repository)
+// Ensure all assets use /nabi-app/ prefix correctly
 
 const distPath = path.join(__dirname, 'dist');
 const indexPath = path.join(distPath, 'index.html');
@@ -47,20 +47,31 @@ function processDirectory(dirPath, oldPath, newPath) {
   }
 }
 
-console.log('Fixing asset paths for Surge deployment...');
+console.log('Fixing asset paths for nabi-app GitHub Pages deployment...');
 
-// Fix index.html
-const indexModified = fixPathsInFile(indexPath, '/-nabi-app-/', '/');
+// Fix index.html - ensure /nabi-app/ prefix is correct
+// Replace /-nabi-app-/ with /nabi-app/
+const indexModified = fixPathsInFile(indexPath, '/-nabi-app-/', '/nabi-app/');
 if (indexModified) {
-  console.log('Fixed index.html');
+  console.log('Fixed index.html - corrected subdirectory prefix to /nabi-app/');
 } else {
-  console.log('index.html already has correct paths or not found');
+  console.log('index.html - checking for /assets/ paths to update...');
+  // Also fix /assets/ to /nabi-app/assets/
+  const indexModified2 = fixPathsInFile(indexPath, '"/assets/', '"/nabi-app/assets/');
+  if (indexModified2) {
+    console.log('Fixed index.html - updated /assets/ to /nabi-app/assets/');
+  } else {
+    console.log('index.html already has correct paths');
+  }
 }
 
-// Fix assets in JS/CSS files
+// Fix any remaining incorrect paths in assets
 const assetsPath = path.join(distPath, 'assets');
 if (fs.existsSync(assetsPath)) {
-  processDirectory(assetsPath, '/-nabi-app-/', '/');
+  // Fix /-nabi-app-/ paths
+  processDirectory(assetsPath, '/-nabi-app-/', '/nabi-app/');
+  // Fix /assets/ paths  
+  processDirectory(assetsPath, '/assets/', '/nabi-app/assets/');
 }
 
-console.log('Asset path fix completed!');
+console.log('Asset path fix completed for nabi-app!');

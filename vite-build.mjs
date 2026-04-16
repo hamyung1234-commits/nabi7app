@@ -1,33 +1,30 @@
-import { build } from 'vite';
+"use strict";
 
-async function doBuild() {
-  console.log('Cleaning dist folder...');
-  const fs = await import('fs');
-  try {
-    if (fs.existsSync('dist')) {
-      fs.rmSync('dist', { recursive: true, force: true });
-      console.log('dist deleted');
-    }
-  } catch (e) {
-    console.log('Clean error:', e.message);
-  }
+import * as vite from 'vite';
+import * as path from 'path';
+import { fileURLToPath } from 'url';
 
-  console.log('Building...');
-  try {
-    await build();
-    console.log('Build completed!');
-    
-    if (fs.existsSync('dist/index.html')) {
-      const html = fs.readFileSync('dist/index.html', 'utf-8');
-      if (html.includes('/-nabi-app-/')) {
-        console.log('WARNING: Still has old base path!');
-      } else {
-        console.log('SUCCESS: Correct base path (/)');
-      }
-    }
-  } catch (e) {
-    console.error('Build error:', e);
-  }
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+console.log('Building project with Vite...');
+
+try {
+  const result = vite.build({
+    configFile: path.join(__dirname, 'vite.config.ts'),
+    root: __dirname,
+    build: {
+      outDir: path.join(__dirname, 'dist'),
+    },
+  });
+  
+  result.then(() => {
+    console.log('Build completed successfully!');
+  }).catch((err) => {
+    console.error('Build failed:', err);
+    process.exit(1);
+  });
+} catch (err) {
+  console.error('Build error:', err);
+  process.exit(1);
 }
-
-doBuild();

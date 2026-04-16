@@ -2,8 +2,8 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
-// Base path: root path for clean URLs
-const base = '/'
+// Base path: /nabi-app for GitHub Pages deployment
+const base = '/nabi-app/'
 
 export default defineConfig({
   plugins: [react()],
