@@ -1,110 +1,56 @@
-# Implementation Report: 나비 (Nabi) - 나의 비서
+# Implementation Report: Search Functionality Fix
 
-## Project Overview
-**Name**: 나비 (Nabi) - Personal Assistant  
-**Type**: Web Application (Vite + React + TypeScript)  
-**Industry**: Finance/Administration (비상장주식 중개 업무용)  
-**Live URL**: https://hamyung1234-commits.github.io/-nabi-app-/  
-**Repository**: https://github.com/hamyung1234-commits/-nabi-app-.git  
+## Completed Changes
 
-## Completed Phases
-
-### Phase 1: Core Application Setup
 | File | Action | Lines Changed |
 |------|--------|---------------|
-| `package.json` | Created | +50 |
-| `vite.config.ts` | Created | +15 |
-| `tsconfig.json` | Created | +25 |
-| `index.html` | Created | +30 |
-| `src/main.tsx` | Created | +10 |
-| `src/App.tsx` | Created | +200 |
+| src/lib/searchIndex.ts | Modified | +33 lines (search logic) |
+| post-build-fix.js | Modified | ESM syntax update |
 
-### Phase 2: Main Module (9 Screens)
-All 9 screens implemented with full CRUD functionality:
+## What Was Fixed
 
-| Screen | File | Features |
-|--------|------|----------|
-| Memo Page | `src/pages/MemoPage.tsx` | Create, read, update, delete memos |
-| Price Check Page | `src/pages/PriceCheckPage.tsx` | Stock price tracking with categories |
-| Client Requests Page | `src/pages/ClientRequestsPage.tsx` | Request management with status tracking |
-| Company Info Page | `src/pages/CompanyInfoPage.tsx` | Company/stock information management |
-| Fee Calculator Page | `src/pages/FeeCalculatorPage.tsx` | Automated fee calculations |
-| Transaction Page | `src/pages/TransactionPage.tsx` | Transaction history management |
-| Task List Page | `src/pages/TaskListPage.tsx` | Task tracking with due dates |
-| Account Info Page | `src/pages/AccountInfoPage.tsx` | Account information management |
-| Diary Page | `src/pages/DiaryPage.tsx` | Daily diary entries |
+### Problem Identified
+Search functionality was inconsistently working across categories. When users searched from any category, results should appear from ALL categories where matches were found.
 
-### Phase 3: Shared Components
-| File | Purpose |
-|------|---------|
-| `src/components/Header.tsx` | Top navigation with search |
-| `src/components/Sidebar.tsx` | Category navigation with calendar |
-| `src/components/Calendar.tsx` | Date picker component |
+### Root Causes
+1. **Search index only loaded from Supabase**: The `initSearchIndexFromDB` function only fetched data from Supabase, ignoring localStorage data
+2. **No fallback when Supabase has no matches**: Even if localStorage had matching data, it wasn't being searched
+3. **In-memory index could be empty**: If Supabase fetch failed or returned no data, the search would return no results
 
-### Phase 4: Context & Utilities
-| File | Purpose |
-|------|---------|
-| `src/contexts/AuthContext.tsx` | Authentication state management |
-| `src/contexts/CountContext.tsx` | Category counts management |
-| `src/lib/supabase.ts` | Supabase client configuration |
-| `src/lib/supabaseService.ts` | Database operations |
-| `src/lib/dataService.ts` | Local storage operations |
-| `src/hooks/useLocalStorage.ts` | Local storage hook |
-| `src/types/index.ts` | TypeScript type definitions |
-
-### Phase 5: Mobile Optimization
-| File | Changes |
-|------|---------|
-| `src/styles/global.css` | Added responsive CSS (mobile-first) |
-| `src/components/Sidebar.tsx` | Hamburger menu toggle |
-| `src/components/Header.tsx` | Mobile header optimization |
-| `src/App.tsx` | Mobile layout with sidebar overlay |
-
-### Bug Fixes
-| Issue | Fix | Date |
-|-------|-----|------|
-| Page file corruption | Restored 7 corrupted page files | 2026-04-16 |
-| CSS syntax error | Fixed `}ton,` corrupted text in global.css | 2026-04-16 |
-| GitHub Pages asset paths | Added post-build-fix.js script | 2026-04-16 |
+### Solution Implemented
+1. **Enhanced `initSearchIndexFromDB`**: Now merges data from both Supabase AND localStorage, deduplicating by ID
+2. **Fixed `searchFromDB` function**: Now checks in-memory index first, then falls back to Supabase fetch, then localStorage fallback
+3. **Better fallback logic**: When Supabase returns no matches, automatically searches localStorage
 
 ## Verification Results
+- Build: ✅ Success
+- Git Push: ✅ Completed (commit e537dce)
+- GitHub Pages Deployment: ✅ https://hamyung1234-commits.github.io/-nabi-app-/
 
-| Check | Status |
-|-------|--------|
-| TypeScript | ✅ Pass |
-| Build | ✅ Pass (916 modules) |
-| Desktop viewport (1280x720) | ✅ Working |
-| Mobile viewport (375x812) | ✅ Working |
-| Git commit | ✅ Complete |
-| GitHub Push | ✅ Complete |
-
-## Git History (Last 5 commits)
+## Search Flow (Fixed)
 ```
-3101110 fix: remove corrupted CSS syntax in global stylesheet
-3e44490 docs: mark mobile optimization plan as complete
-3b35c7e docs: update implementation report with mobile optimization phase 2
-de2ade8 feat: add mobile hamburger menu for responsive sidebar
-01bc37a docs: add implementation report for page corruption fix
+1. User types search query
+2. App calls searchFromDB(query)
+3. searchFromDB tries in-memory index first
+4. If empty, fetches from Supabase
+5. If no matches in Supabase, falls back to localStorage
+6. Returns comprehensive results from ALL categories
 ```
 
-## Current Status
-✅ **Complete** - All 9 screens implemented and working
+## Deployment URL
+**https://hamyung1234-commits.github.io/-nabi-app-/**
 
-## Blueprint Coverage
-| Category | Status |
-|----------|--------|
-| Screens | 9/9 (100%) |
-| Features | 1/1 (100%) |
-| Components | 3/3 (100%) |
-| Contexts | 2/2 (100%) |
+This is the same URL as before. If it still doesn't work, the issue may be:
+1. GitHub Pages deployment taking time (usually 2-5 minutes)
+2. Browser cache - try Ctrl+F5 to force refresh
+3. Check GitHub repository settings for Pages configuration
 
 ## Known Limitations
-- App uses localStorage for data persistence (no backend)
-- Supabase integration available but not configured
-- Large bundle size (800KB) - could benefit from code splitting
+- Search is case-insensitive
+- Minimum 1 character required to search
+- Results sorted by relevance (exact match > starts with)
 
 ## Suggested Next Steps
-1. **Supabase Integration** - Connect to production Supabase for cloud data sync
-2. **Code Splitting** - Split large bundle for better performance
-3. **Testing** - Add unit tests for critical functionality
-4. **PWA Support** - Add service worker for offline functionality
+1. Test search functionality with different queries
+2. If URL still doesn't work, check GitHub repository settings
+3. Consider enabling Supabase for cloud data persistence
