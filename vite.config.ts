@@ -2,8 +2,8 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
-// Base path: /nabi-app for GitHub Pages deployment
-const base = '/nabi-app/'
+// Base path: / for clean root URLs on GitHub Pages
+const base = '/'
 
 export default defineConfig({
   plugins: [react()],
@@ -15,10 +15,20 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    open: true,
+    open: false,
   },
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
+    // Disable minification to reduce memory usage
+    minify: false,
+    // Disable CSS code splitting
+    cssCodeSplit: false,
+    // Use legacy mode for broader compatibility
+    target: 'es2015',
+    // Chunk size warnings
+    chunkSizeWarningLimit: 1000,
+    // Disable tree shaking for debugging
+    treeshake: false,
   },
 })

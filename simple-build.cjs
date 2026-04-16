@@ -11,11 +11,17 @@ try {
   console.log('1. Installing dependencies...');
   execSync('npm install', { stdio: 'inherit' });
   
-  // Step 2: Build with Vite
+  // Step 2: Build with Vite (capture output separately)
   console.log('\n2. Building with Vite...');
-  execSync('npx vite build', { stdio: 'inherit' });
+  try {
+    const output = execSync('npx vite build 2>&1', { encoding: 'utf8', timeout: 300000 });
+    console.log(output);
+  } catch (e) {
+    console.log('Vite output:', e.stdout || e.message);
+    throw e;
+  }
   
-  // Step 3: Verify dist folder exists
+  // Step 3: Check dist folder
   const distPath = path.join(__dirname, 'dist');
   if (fs.existsSync(distPath)) {
     console.log('\n✓ dist folder created successfully');
@@ -23,7 +29,10 @@ try {
     console.log(`  - ${files.length} files/folders in dist`);
   } else {
     console.log('\n✗ dist folder not created');
-    process.exit(1);
+    // List what was created
+    const dir = fs.readdirSync(__dirname);
+    console.log('Available files:', dir.join(', '));
+    throw new Error('dist not created');
   }
   
   // Step 4: Fix asset paths (post-build-fix.js)
