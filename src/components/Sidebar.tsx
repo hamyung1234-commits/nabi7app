@@ -9,6 +9,8 @@ interface SidebarProps {
   selectedDate: string;
   onDateChange: (date: string) => void;
   categoryCounts: Record<CategoryId, number>;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 export default function Sidebar({
@@ -18,51 +20,75 @@ export default function Sidebar({
   selectedDate,
   onDateChange,
   categoryCounts,
+  isOpen = false,
+  onClose,
 }: SidebarProps) {
   return (
-    <aside className="sidebar">
-      <div className="sidebar-header">
-        <div className="sidebar-logo">
-          <span style={{ fontSize: '2rem' }}>🦋</span>
-          <div>
-            <h1>나비</h1>
-            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-              나의 비서
-            </span>
+    <>
+      {/* Mobile Overlay */}
+      {isOpen && (
+        <div 
+          className="sidebar-overlay visible"
+          onClick={onClose}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 1000,
+          }}
+        />
+      )}
+      
+      <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
+        <div className="sidebar-header">
+          <div className="sidebar-logo">
+            <span style={{ fontSize: '2rem' }}>🦋</span>
+            <div>
+              <h1>나비</h1>
+              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                나의 비서
+              </span>
+            </div>
           </div>
+          <p className="sidebar-slogan">
+            언제나 열려있는 나만의 업무 비서
+          </p>
         </div>
-        <p className="sidebar-slogan">
-          언제나 열려있는 나만의 업무 비서
-        </p>
-      </div>
 
-      <Calendar selectedDate={selectedDate} onDateChange={onDateChange} />
+        <Calendar selectedDate={selectedDate} onDateChange={onDateChange} />
 
-      <nav className="category-list">
-        {categories.map((category) => (
-          <div
-            key={category.id}
-            className={`category-item ${activeCategory === category.id ? 'active' : ''}`}
-            onClick={() => onCategoryChange(category.id)}
-            style={{
-              borderLeft: activeCategory === category.id 
-                ? `3px solid ${category.color}` 
-                : '3px solid transparent',
-            }}
-          >
-            <span className="category-icon">{category.icon}</span>
-            <span className="category-name">{category.name}</span>
-            {(categoryCounts[category.id] || 0) > 0 && (
-              <span className="category-count">{categoryCounts[category.id]}</span>
-            )}
-          </div>
-        ))}
-      </nav>
+        <nav className="category-list">
+          {categories.map((category) => (
+            <div
+              key={category.id}
+              className={`category-item ${activeCategory === category.id ? 'active' : ''}`}
+              onClick={() => {
+                onCategoryChange(category.id);
+                if (onClose) onClose();
+              }}
+              style={{
+                borderLeft: activeCategory === category.id 
+                  ? `3px solid ${category.color}` 
+                  : '3px solid transparent',
+              }}
+            >
+              <span className="category-icon">{category.icon}</span>
+              <span className="category-name">{category.name}</span>
+              {(categoryCounts[category.id] || 0) > 0 && (
+                <span className="category-count">{categoryCounts[category.id]}</span>
+              )}
+            </div>
+          ))}
+        </nav>
 
-      <div style={{ padding: 'var(--spacing-md)', borderTop: '1px solid var(--color-border)' }}>
-        <StartPageGuide />
-      </div>
-    </aside>
+        <div style={{ padding: 'var(--spacing-md)', borderTop: '1px solid var(--color-border)' }}>
+          <StartPageGuide />
+        </div>
+      </aside>
+    </>
   );
 }
 

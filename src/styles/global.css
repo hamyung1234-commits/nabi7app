@@ -750,44 +750,601 @@ body {
   background: var(--color-border-light);
 }
 
-/* Responsive */
-@media (max-width: 1024px) {
-  .sidebar {
-    width: 80px;
+/* ============================================
+   RESPONSIVE DESIGN - Mobile First Approach
+   Breakpoints: 375px (mobile) → 640px (sm) → 768px (md) → 1024px (lg) → 1280px (xl)
+   ============================================ */
+
+/* ============================================
+   Base (Mobile) - 375px and below
+   ============================================ */
+@media (max-width: 639px) {
+  /* App Layout - Mobile */
+  .app {
+    flex-direction: column;
+    height: 100dvh;
+    overflow: hidden;
   }
-  
-  .sidebar-logo h1,
-  .sidebar-slogan,
-  .category-name,
-  .category-count {
+
+  /* Sidebar - Hidden by default on mobile */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 85%;
+    max-width: 320px;
+    height: 100%;
+    z-index: 1001;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
     display: none;
   }
-  
-  .category-item {
+
+  .sidebar-overlay.visible {
+    display: block;
+  }
+
+  /* Mobile Menu Toggle Button */
+  .mobile-menu-btn {
+    display: flex !important;
+    align-items: center;
     justify-content: center;
+    width: 44px;
+    height: 44px;
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: 20px;
+    transition: all 0.15s ease;
+  }
+
+  .mobile-menu-btn:hover {
+    background: var(--color-bg-card-hover);
+  }
+
+  /* Sidebar Header - Mobile */
+  .sidebar-header {
     padding: var(--spacing-md);
   }
-  
+
+  .sidebar-logo h1 {
+    font-size: var(--font-lg);
+  }
+
+  .sidebar-slogan {
+    display: block;
+    font-size: var(--font-xs);
+  }
+
+  /* Calendar - Mobile (compact) */
+  .calendar-container {
+    padding: var(--spacing-sm);
+  }
+
+  .calendar-header {
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .calendar-title {
+    font-size: var(--font-xs);
+  }
+
+  .calendar-day {
+    font-size: var(--font-xs);
+    padding: 2px;
+  }
+
+  /* Category List - Mobile */
+  .category-list {
+    padding: var(--spacing-sm);
+  }
+
+  .category-item {
+    padding: var(--spacing-sm) var(--spacing-md);
+    min-height: 48px;
+  }
+
+  .category-icon {
+    font-size: var(--font-lg);
+  }
+
+  .category-name {
+    font-size: var(--font-sm);
+    display: block;
+  }
+
+  .category-count {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+
+  /* Main Content - Mobile */
+  .main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  /* Header - Mobile */
+  .header {
+    height: auto;
+    min-height: 60px;
+    padding: var(--spacing-sm) var(--spacing-md);
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+  }
+
+  .header-left {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .header-title {
+    font-size: var(--font-base);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .header-date {
+    font-size: var(--font-xs);
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
+  }
+
+  /* Search - Mobile */
+  .search-box {
+    width: 100%;
+    order: 3;
+    flex-basis: 100%;
+  }
+
   .search-input {
-    width: 200px;
+    width: 100%;
+    font-size: var(--font-sm);
+    padding: var(--spacing-sm);
+    padding-left: 2.25rem;
+  }
+
+  /* Content Area - Mobile */
+  .content-area {
+    padding: var(--spacing-md);
+    overflow-y: auto;
+    flex: 1;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Cards - Mobile */
+  .card {
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+  }
+
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+  }
+
+  .card-title {
+    font-size: var(--font-base);
+  }
+
+  /* Forms - Mobile */
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .form-input,
+  .form-select,
+  .form-textarea {
+    font-size: 16px; /* Prevent zoom on iOS */
+    min-height: 44px;
+  }
+
+  .form-label {
+    font-size: var(--font-xs);
+    padding: var(--spacing-xs);
+  }
+
+  /* Tables - Mobile */
+  .table-container {
+    margin: 0 calc(-1 * var(--spacing-md));
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+
+  .table {
+    font-size: var(--font-xs);
+  }
+
+  .table th,
+  .table td {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    white-space: nowrap;
+  }
+
+  /* Buttons - Mobile */
+  .btn {
+    min-height: 44px;
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: var(--font-sm);
+  }
+
+  .btn-sm {
+    min-height: 36px;
+    padding: var(--spacing-xs) var(--spacing-sm);
+  }
+
+  .btn-icon {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+  }
+
+  /* Summary Cards - Mobile */
+  .summary-cards {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+  }
+
+  .summary-card {
+    padding: var(--spacing-md);
+  }
+
+  .summary-card-value {
+    font-size: var(--font-xl);
+  }
+
+  /* Calculator Grid - Mobile */
+  .calculator-grid {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-md);
+  }
+
+  .calculator-section {
+    padding: var(--spacing-md);
+  }
+
+  /* Memo Input - Mobile */
+  .memo-textarea {
+    min-height: 150px;
+    font-size: var(--font-sm);
+  }
+
+  /* Start Page Guide - Mobile */
+  .start-page-guide {
+    padding: var(--spacing-md);
+  }
+
+  .start-page-guide h3 {
+    font-size: var(--font-sm);
+  }
+
+  .start-page-guide ol {
+    font-size: var(--font-xs);
+  }
+
+  /* Search Results Popup - Mobile */
+  .search-popup {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    border-radius: 0 !important;
+    z-index: 2000 !important;
+  }
+
+  /* Modal - Mobile Full Screen */
+  .modal {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    z-index: 1500 !important;
+  }
+
+  .modal-content {
+    max-height: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Safe Area - Mobile */
+  .app {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  .header {
+    padding-top: calc(var(--spacing-sm) + env(safe-area-inset-top));
+  }
+
+  .content-area {
+    padding-bottom: calc(var(--spacing-md) + env(safe-area-inset-bottom));
   }
 }
 
-/* Print styles */
+/* ============================================
+   Small Mobile - 375px and below
+   ============================================ */
+@media (max-width: 374px) {
+  .header {
+    padding: var(--spacing-xs) var(--spacing-sm);
+  }
+
+  .content-area {
+    padding: var(--spacing-sm);
+  }
+
+  .category-item {
+    padding: var(--spacing-xs) var(--spacing-sm);
+  }
+
+  .card {
+    padding: var(--spacing-sm);
+  }
+}
+
+/* ============================================
+   Tablet (sm) - 640px and above
+   ============================================ */
+@media (min-width: 640px) and (max-width: 767px) {
+  .app {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 260px;
+    height: 100%;
+    z-index: 1001;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .main-content {
+    width: 100%;
+  }
+
+  .content-area {
+    padding: var(--spacing-lg);
+  }
+
+  .summary-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ============================================
+   Tablet (md) - 768px and above
+   ============================================ */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .app {
+    flex-direction: row;
+  }
+
+  .sidebar {
+    position: relative;
+    width: 240px;
+    transform: none;
+  }
+
+  .main-content {
+    flex: 1;
+  }
+
+  .mobile-menu-btn {
+    display: none !important;
+  }
+
+  .sidebar-overlay {
+    display: none !important;
+  }
+
+  .content-area {
+    padding: var(--spacing-xl);
+  }
+
+  .summary-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .calculator-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .search-popup {
+    width: 520px !important;
+    right: var(--spacing-xl) !important;
+    top: 70px !important;
+  }
+}
+
+/* ============================================
+   Desktop (lg) - 1024px and above
+   ============================================ */
+@media (min-width: 1024px) {
+  .sidebar {
+    width: 260px;
+  }
+
+  .main-content {
+    flex: 1;
+  }
+
+  .mobile-menu-btn {
+    display: none !important;
+  }
+
+  .sidebar-overlay {
+    display: none !important;
+  }
+
+  .header {
+    padding: 0 var(--spacing-xl);
+  }
+
+  .content-area {
+    padding: var(--spacing-xl);
+  }
+
+  .summary-cards {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+
+  .calculator-grid {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
+
+  .search-input {
+    width: 300px;
+  }
+}
+
+/* ============================================
+   Wide Desktop (xl) - 1280px and above
+   ============================================ */
+@media (min-width: 1280px) {
+  .sidebar {
+    width: 280px;
+  }
+
+  .content-area {
+    padding: var(--spacing-xl) calc(var(--spacing-xl) * 1.5);
+    max-width: 1400px;
+  }
+
+  .search-input {
+    width: 350px;
+  }
+}
+
+/* ============================================
+   Touch Target Minimum (44x44px) - Global
+   ============================================ */
+@media (max-width: 1023px) {
+  /* Ensure minimum touch targets on mobile */
+  button,
+  .btn,
+  a,
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"],
+  .category-item,
+  .calendar-day,
+  .sidebar-logo {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Adjust specific elements */
+  .form-inline .form-input {
+    min-height: 44px;
+  }
+
+  /* Table row touch targets */
+  .table tbody tr {
+    min-height: 44px;
+  }
+}
+
+/* ============================================
+   Landscape Mobile Fix
+   ============================================ */
+@media (max-height: 500px) and (orientation: landscape) {
+  .sidebar {
+    width: 200px;
+  }
+
+  .sidebar-header {
+    padding: var(--spacing-sm);
+  }
+
+  .calendar-container {
+    display: none;
+  }
+
+  .category-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-xs);
+  }
+
+  .category-item {
+    min-height: 40px;
+  }
+}
+
+/* ============================================
+   Print styles
+   ============================================ */
 @media print {
   .sidebar,
   .header,
   .btn,
-  .search-box {
+  .search-box,
+  .mobile-menu-btn,
+  .sidebar-overlay {
     display: none !important;
   }
   
   .main-content {
     width: 100% !important;
+    padding: 0 !important;
   }
   
   .card {
     break-inside: avoid;
     border: 1px solid #ccc;
+    page-break-inside: avoid;
+  }
+
+  .app {
+    display: block;
+    height: auto;
   }
 }
