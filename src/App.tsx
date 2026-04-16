@@ -107,10 +107,8 @@ function getLocalStorageCounts(): Record<CategoryId, number> {
 }
 
 function AppContent() {
-  // 앱 초기화 상태 관리
+  // 앱 초기화 상태 관리 - 빠르게 로딩 완료
   const [isAppLoading, setIsAppLoading] = useState(true);
-  const [loadingTimeout, setLoadingTimeout] = useState(false);
-  const initTimeoutRef = useRef<number | null>(null);
 
   const {
     activeCategory,
@@ -150,57 +148,38 @@ function AppContent() {
   const prevCategoryRef = useRef<string>(activeCategory);
 
   // 앱 초기화 (Search index initialization)
-  useEffect(() => {
-    // 타임아웃 설정: 3초 이상 로딩되면 localStorage만으로 진행
-    initTimeoutRef.current = window.setTimeout(() => {
-      console.warn('[App] Initialization timeout (3s) - proceeding with local data only');
-      setLoadingTimeout(true);
-      setIsAppLoading(false);
-    }, 3000);
+useEffect(() => {
+    // 즉시 로딩 완료 - localStorage는 이미 useAppState에서 동기적으로 로드됨
+    console.log('[App] Starting initialization (fast path - localStorage always available)');
 
     const initApp = async () => {
       try {
-        console.log('[App] Starting initialization...');
-        
         // Search index 초기화 시도 (실패해도 계속 진행)
-        try {
-          await initSearchIndexFromDB();
-          console.log('[App] Search index initialized');
-        } catch (searchError) {
-          console.warn('[App] Search index init failed, using local fallback:', searchError);
-        }
-        
-        // 초기화 완료
-        console.log('[App] App initialized successfully');
-        
-        // 타임아웃 정리
-        if (initTimeoutRef.current) {
-          clearTimeout(initTimeoutRef.current);
-          initTimeoutRef.current = null;
-        }
-        
-        setIsAppLoading(false);
-      } catch (error: any) {
-        console.error('[App] Initialization error:', error);
-        
-        // 타임아웃 정리
-        if (initTimeoutRef.current) {
-          clearTimeout(initTimeoutRef.current);
-          initTimeoutRef.current = null;
-        }
-        
-        // 로컬 데이터는 이미 useAppState에서 로드되었으므로 앱 계속 사용 가능
-        setIsAppLoading(false);
+        await initSearchIndexFromDB();
+        console.log('[App] Search index initialized');
+      } catch (searchError) {
+        console.warn('[App] Search index init failed:', searchError);
+        // 실패해도 계속 진행 - localStorage 데이터는 이미 사용 가능
       }
+      
+      // 500ms 후 로딩 완료 (사용자 경험 개선을 위한 최소 대기시간)
+      setTimeout(() => {
+        console.log('[App] Initialization complete - rendering app');
+        setIsAppLoading(false);
+      }, 500);
     };
+
+    // 최대 3초 후에도 로딩 중이면強制的に終了
+    const timeout = setTimeout(() => {
+      console.warn('[App] Initialization timeout (3s) - forcing render');
+      setIsAppLoading(false);
+    }, 3000);
 
     initApp();
 
     // cleanup
     return () => {
-      if (initTimeoutRef.current) {
-        clearTimeout(initTimeoutRef.current);
-      }
+      clearTimeout(timeout);
     };
   }, []);
 
