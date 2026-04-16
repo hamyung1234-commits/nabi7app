@@ -132,13 +132,14 @@ function createSearchItem(type: string, data: any): SearchItem {
 
 /**
  * Initialize search index from Supabase
+ * FIXED: Always also load from localStorage to ensure comprehensive search
  */
 export async function initSearchIndexFromDB(): Promise<void> {
   if (isLoading) return;
   isLoading = true;
   searchIndex = [];
 
-  console.log('[SearchIndex] Starting DB initialization...');
+  console.log('[SearchIndex] Starting initialization...');
 
   try {
     const [
@@ -166,7 +167,7 @@ export async function initSearchIndexFromDB(): Promise<void> {
     const extractData = (name: string, result: PromiseSettledResult<any>): any[] => {
       if (result.status === 'fulfilled') {
         const data = Array.isArray(result.value) ? result.value : [];
-        console.log(`[SearchIndex] ${name}: ${data.length} records`);
+        console.log(`[SearchIndex] ${name}: ${data.length} records from Supabase`);
         return data;
       } else {
         console.error(`[SearchIndex] ${name} ERROR:`, result.reason?.message || result.reason);
@@ -184,19 +185,79 @@ export async function initSearchIndexFromDB(): Promise<void> {
     const tasks = extractData('tasks', tasksResult);
     const diaryEntries = extractData('diaryEntries', diaryEntriesResult);
 
-    customers.forEach((c: any) => searchIndex.push(createSearchItem('customer', c)));
-    companies.forEach((c: any) => searchIndex.push(createSearchItem('company', c)));
-    transactions.forEach((t: any) => searchIndex.push(createSearchItem('transaction', t)));
-    priceChecks.forEach((p: any) => searchIndex.push(createSearchItem('pricecheck', p)));
-    clientRequests.forEach((r: any) => searchIndex.push(createSearchItem('request', r)));
-    accounts.forEach((a: any) => searchIndex.push(createSearchItem('account', a)));
-    memos.forEach((m: any) => searchIndex.push(createSearchItem('memo', m)));
-    tasks.forEach((t: any) => searchIndex.push(createSearchItem('task', t)));
-    diaryEntries.forEach((d: any) => searchIndex.push(createSearchItem('diary', d)));
+    // ALSO load from localStorage to ensure comprehensive search
+    console.log('[SearchIndex] Also loading from localStorage as backup...');
+    const STORAGE_PREFIX = 'nabi-data-1.0-';
+    
+    const getLocalData = (key: string): any[] => {
+      let data = localStorage.getItem(`${STORAGE_PREFIX}${key}`);
+      if (data) return JSON.parse(data);
+      const capitalized = key.charAt(0).toUpperCase() + key.slice(1);
+      data = localStorage.getItem(`${STORAGE_PREFIX}${capitalized}`);
+      if (data) return JSON.parse(data);
+      return [];
+    };
 
-    console.log('[SearchIndex] Initialized from DB with', searchIndex.length, 'items across all categories');
+    const localCustomers = getLocalData('customers');
+    const localCompanies = getLocalData('companies');
+    const localTransactions = getLocalData('transactions');
+    const localPriceChecks = getLocalData('priceChecks');
+    const localClientRequests = getLocalData('clientRequests');
+    const localAccounts = getLocalData('accounts');
+    const localMemos = getLocalData('memos');
+    const localTasks = getLocalData('tasks');
+    const localDiaryEntries = getLocalData('diaryEntries');
+
+    console.log('[SearchIndex] localStorage data:', {
+      customers: localCustomers.length,
+      companies: localCompanies.length,
+      transactions: localTransactions.length,
+      priceChecks: localPriceChecks.length,
+      clientRequests: localClientRequests.length,
+      accounts: localAccounts.length,
+      memos: localMemos.length,
+      tasks: localTasks.length,
+      diaryEntries: localDiaryEntries.length,
+    });
+
+    // Merge Supabase data with localStorage data (deduplicate by ID)
+    const addToIndex = (items: any[], type: string) => {
+      items.forEach((item: any) => {
+        const existingIndex = searchIndex.findIndex(s => s.originalId === item.id && s.type === type);
+        if (existingIndex === -1) {
+          searchIndex.push(createSearchItem(type, item));
+        }
+      });
+    };
+
+    // Add Supabase data first
+    addToIndex(customers, 'customer');
+    addToIndex(companies, 'company');
+    addToIndex(transactions, 'transaction');
+    addToIndex(priceChecks, 'pricecheck');
+    addToIndex(clientRequests, 'request');
+    addToIndex(accounts, 'account');
+    addToIndex(memos, 'memo');
+    addToIndex(tasks, 'task');
+    addToIndex(diaryEntries, 'diary');
+
+    // Add localStorage data (will skip duplicates)
+    addToIndex(localCustomers, 'customer');
+    addToIndex(localCompanies, 'company');
+    addToIndex(localTransactions, 'transaction');
+    addToIndex(localPriceChecks, 'pricecheck');
+    addToIndex(localClientRequests, 'request');
+    addToIndex(localAccounts, 'account');
+    addToIndex(localMemos, 'memo');
+    addToIndex(localTasks, 'task');
+    addToIndex(localDiaryEntries, 'diary');
+
+    console.log('[SearchIndex] Final index with', searchIndex.length, 'total items (Supabase + localStorage merged)');
   } catch (error) {
-    console.error('[SearchIndex] Failed to initialize from DB:', error);
+    console.error('[SearchIndex] Failed to initialize:', error);
+    // Fallback to localStorage only
+    const fallbackData = searchFromLocalStorage('__init__');
+    console.log('[SearchIndex] Using localStorage fallback:', fallbackData.length, 'items');
   } finally {
     isLoading = false;
   }

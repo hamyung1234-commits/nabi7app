@@ -1,28 +1,45 @@
-# Implementation Plan: 모바일 최적화 (Responsive Web CSS)
+# Implementation Plan: 검색 기능 수정
 
 ## Summary
-나비(Nabi) 앱을 모바일에서도 완벽하게 사용할 수 있도록 반응형 CSS를 적용합니다. 모바일-first 접근법으로 모든 화면 크기에 최적화된 레이아웃을 구현합니다.
+사용자가 모든 카테고리에서 검색할 때 검색 결과가 제대로 나오지 않는 문제를 수정합니다. Supabase 연결 실패 시 localStorage 폴백 검색이 제대로 작동하도록 개선합니다.
 
-## Status: ✅ COMPLETED
+## Problem Analysis
+1. **검색이 작동하지 않는 원인 추정**:
+   - Supabase 연결 실패 시 `searchFromLocalStorage` 폴백이 제대로 호출되지 않음
+   - localStorage 데이터 키 불일치 (`camelCase` vs `snake_case`)
+   - 검색 인덱스 초기화가 완료되지 않은 상태에서 검색 시도
 
-### Completed Changes
-| 파일 | 변경 내용 | 상태 |
-|------|----------|------|
-| `src/styles/global.css` | 반응형 CSS 추가 (모바일-first) | ✅ |
-| `src/components/Sidebar.tsx` | 햄버거 메뉴 토글 + 모바일 레이아웃 | ✅ |
-| `src/components/Header.tsx` | 모바일 헤더 최적화 | ✅ |
-| `src/App.tsx` | 모바일 레이아웃 컨테이너 + hamburger button | ✅ |
+2. **현재 검색 흐름**:
+   - `searchFromDB()` 호출 → Supabase에서 모든 테이블 데이터 가져옴
+   - 데이터가 없으면 `searchFromLocalStorage()` 폴백
+   - 문제: Supabase 연결은 되지만 빈 배열을 반환할 때의 처리가 불완전
+
+## Planned Changes
+
+| 파일 | 작업 | 목적 |
+|------|------|------|
+| src/lib/searchIndex.ts | 수정 | localStorage 폴백 검색 개선 및 디버그 로깅 추가 |
+| src/App.tsx | 수정 | 검색 초기화 타이밍 및 검색 결과 처리 개선 |
 
 ## Technical Approach
-1. **CSS Breakpoints**: Mobile-first (base → sm → md → lg → xl)
-2. **Sidebar Pattern**: Mobile에서 Drawer/Overlay로 변경
-3. **Touch Targets**: 모든 인터랙티브 요소 44x44px 이상
-4. **Safe Area**: env(safe-area-inset-*) 활용
-5. **Fluid Typography**: clamp() 함수 사용
 
-## Verification Results
-- ✅ Build: 916 modules transformed
-- ✅ TypeScript: Compiles without errors
-- ✅ Desktop viewport (1280x720): Working
-- ✅ Mobile viewport (375x812): Working
-- ✅ Git: Committed and pushed
+### 1. searchFromDB 개선
+- Supabase 연결 상태를 더 명확히 확인
+- Promise.allSettled의 결과 처리 로직 개선
+- 데이터가 0건일 때만 localStorage 폴백，而不是 Supabase 에러 시에만
+
+### 2. localStorage 폴백 개선
+- camelCase와 snake_case 키 모두 시도
+- 데이터 키 매핑을 명확히 함
+- 검색 필드 Coverage 확장
+
+### 3. 검색 초기화 시퀀스 개선
+- 앱 마운트 시 검색 인덱스 즉시 초기화
+- 검색 결과를 localStorage 데이터 개수와 비교하여 폴백 결정
+
+## Estimated Complexity
+**Medium** — 로직 흐름 수정이지만 핵심 구조는 그대로 유지
+
+## Risk Assessment
+- 검색 폴백 로직 변경으로 기존 동작 변경 가능성 있음 → Thorough testing
+- localStorage 키 명칭 변경 → 기존 데이터 마이그레이션 불필요 (양쪽 모두 확인)
