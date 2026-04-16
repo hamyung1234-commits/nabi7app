@@ -1,63 +1,66 @@
-# GitHub Pages 배포 완료 보고서
+# GitHub Pages 배포 수정 완료
 
-## 배포 정보
-
-| 항목 | 내용 |
-|------|------|
-| **라이브 URL** | https://hamyung1234-commits.github.io/-nabi-app-/ |
-| Repository | https://github.com/hamyung1234-commits/-nabi-app- |
-| Branch | master (GitHub Actions로 자동 배포) |
-| 배포 방식 | GitHub Pages |
-| 상태 | ✅ **정상 작동** (HTTP 200 OK 확인) |
+## 문제 원인
+기존 배포 주소 `https://hamyung1234-commits.github.io/-nabi-app-/`가 작동하지 않은 이유:
+- GitHub 저장소 이름에 하이픈 앞뒤로 `-nabi-app-` 형식 사용
+- Vite base path가 `/nabi-app/`으로 설정되어 불필요한 서브디렉토리 포함
 
 ## 수정 내용
 
-### 문제점
-기존 배포 주소가 열리지 않는 문제 발생
+### 1. vite.config.ts
+```typescript
+// 수정 전 (잘못된 설정)
+const base = '/nabi-app/'
 
-### 해결책
-1. **vite.config.ts** - base 경로 `/nabi-app/`으로 설정
-2. **post-build-fix.js** - 빌드 후 에셋 경로 수정 스크립트
-3. **.github/workflows/deploy.yml** - GitHub Actions 워크플로우 업데이트
-
-### 변경된 파일 (4개)
-- vite.config.ts
-- post-build-fix.js
-- .github/workflows/deploy.yml
-- dist/index.html
-
-## 공유 가능한 URL
-
-```
-https://hamyung1234-commits.github.io/-nabi-app-/
+// 수정 후 (루트 경로)
+const base = '/'
 ```
 
-위 링크를 복사하여 다른 사람에게 공유하시면 됩니다!
+### 2. GitHub Actions Workflow (.github/workflows/deploy.yml)
+- asset 경로 수정 단계 추가
+- 모든 에셋이 루트 경로(/) 사용하도록 설정
 
-## 배포 확인 결과
-
-```bash
-$ curl -I https://hamyung1234-commits.github.io/-nabi-app-/
-HTTP/1.1 200 OK
-Content-Type: text/html; charset=utf-8
+### 3. 커밋 및 푸시 완료
+```
+f6b692b chore: trigger redeployment with base path /
 ```
 
-## 자동 배포 설정
-- GitHub에 코드를 푸시하면 자동으로 GitHub Actions가 빌드 및 배포를 수행합니다
-- 마지막 커밋: `docs: add deployment ready guide with repo rename instructions`
+## 배포 주소
 
-## 알려진 문제
+### 새 주소 (저장소 이름 변경 후)
+**https://hamyung1234-commits.github.io/nabi-app/**
 
-### 저장소 이름 관련
-GitHub 저장소 이름이 `-nabi-app-` (앞뒤 하이픈 포함)로 설정되어 있습니다. 
+### 현재 주소 (변경 전)
+**https://hamyung1234-commits.github.io/-nabi-app-/**
 
-만약 브라우저에서 주소가 여전히 열리지 않는다면:
-1. GitHub 저장소 Settings → Pages로 이동
-2. Branch를 `master`, 폴더를 `/(root)`로 설정
-3. Save 클릭 후 2-3분 대기
+## 다음 단계
 
-### 다른 사람에게 공유 시
-주소가 열리지 않는다면 상대방에게 다음을 확인하도록 안내하세요:
-1. 브라우저 캐시 삭제 (Ctrl+Shift+R 또는 Cmd+Shift+R)
-2. 다른 브라우저로 시도
-3. URL 정확히 입력했는지 확인 (`-nabi-app-/` 전체 입력)
+### 1단계: GitHub 저장소 이름 변경 (필수)
+GitHub에서 저장소 이름을 변경해야 새 주소가 작동합니다:
+
+1. GitHub 저장소 Settings로 이동: https://github.com/hamyung1234-commits/-nabi-app-/settings
+2. **Repository name** → `-nabi-app-` 을 `nabi-app`으로 변경
+3. **Rename** 버튼 클릭
+4. 확인 메시지에서 **I understand, rename this repository** 클릭
+
+### 2단계: GitHub Pages 재설정 (저장소 이름 변경 후)
+1. Settings → Pages로 이동
+2. **Source**가 `gh-pages` branch + `/ (root)` folder인지 확인
+3. Save 클릭
+4. 2~3분 대기 후 새 주소로 접속 테스트
+
+### 3단계: 공유
+새 주소가 작동하면 아래 주소를 공유하세요:
+```
+https://hamyung1234-commits.github.io/nabi-app/
+```
+
+## 현재 상태
+- ✅ 코드 수정 완료
+- ✅ GitHub Actions 트리거 완료
+- ⏳ GitHub Pages 자동 배포 진행 중
+- ⏳ 저장소 이름 변경 (사용자가 직접 수행 필요)
+
+## 검증
+GitHub Actions 실행 상태 확인:
+https://github.com/hamyung1234-commits/-nabi-app-/actions
