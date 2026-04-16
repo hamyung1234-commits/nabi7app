@@ -487,6 +487,28 @@ export async function searchFromDB(query: string): Promise<SearchItem[]> {
 }
 
 /**
+ * Helper to get data from localStorage with flexible key matching (backwards compatibility)
+ */
+function getLocalStorageData(key: string): any[] {
+  const STORAGE_PREFIX = 'nabi-data-1.0-';
+  
+  // Try exact match first (lowercase)
+  let data = localStorage.getItem(`${STORAGE_PREFIX}${key}`);
+  if (data) return JSON.parse(data);
+  
+  // Try capitalized first letter (for backwards compatibility)
+  const capitalized = key.charAt(0).toUpperCase() + key.slice(1);
+  data = localStorage.getItem(`${STORAGE_PREFIX}${capitalized}`);
+  if (data) return JSON.parse(data);
+  
+  // Try no prefix (for legacy data)
+  data = localStorage.getItem(key);
+  if (data) return JSON.parse(data);
+  
+  return [];
+}
+
+/**
  * LocalStorage fallback search - Comprehensive cross-category search
  * ALWAYS searches ALL categories from localStorage
  */
@@ -497,47 +519,66 @@ function searchFromLocalStorage(query: string): SearchItem[] {
   console.log('[SearchFromLocalStorage] Searching for:', query, '(ALL categories)');
 
   try {
-    const STORAGE_PREFIX = 'nabi-data-1.0-';
-    
-    // All 9 storage keys for comprehensive search
-    const storageKeys: Record<string, string> = {
-      customers: `${STORAGE_PREFIX}customers`,
-      companies: `${STORAGE_PREFIX}companies`,
-      transactions: `${STORAGE_PREFIX}transactions`,
-      priceChecks: `${STORAGE_PREFIX}priceChecks`,
-      requests: `${STORAGE_PREFIX}clientRequests`,
-      accounts: `${STORAGE_PREFIX}accounts`,
-      memos: `${STORAGE_PREFIX}memos`,
-      tasks: `${STORAGE_PREFIX}tasks`,
-      diary: `${STORAGE_PREFIX}diaryEntries`,
-      fee: `${STORAGE_PREFIX}feeCalculations`,
-    };
+    // Get ALL data from all categories (with flexible key matching)
+    const customers = getLocalStorageData('customers');
+    const companies = getLocalStorageData('companies');
+    const transactions = getLocalStorageData('transactions');
+    const priceChecks = getLocalStorageData('priceChecks');
+    const requests = getLocalStorageData('clientRequests');
+    const accounts = getLocalStorageData('accounts');
+    const memos = getLocalStorageData('memos');
+    const tasks = getLocalStorageData('tasks');
+    const diaryEntries = getLocalStorageData('diaryEntries');
+
+    console.log('[SearchFromLocalStorage] Data loaded:', {
+      customers: customers.length,
+      companies: companies.length,
+      transactions: transactions.length,
+      priceChecks: priceChecks.length,
+      requests: requests.length,
+      accounts: accounts.length,
+      memos: memos.length,
+      tasks: tasks.length,
+      diaryEntries: diaryEntries.length,
+    });
 
     // Comprehensive search maps - search ALL fields for each category
+    // Note: Check BOTH lowercase (snake_case) AND camelCase field names
     const searchMaps: Record<string, (item: any) => boolean> = {
       customers: (item) => 
         (item.name && item.name.toLowerCase().includes(q)) ||
         (item.contact && item.contact.toLowerCase().includes(q)) ||
         (item.customerType && item.customerType.toLowerCase().includes(q)) ||
+        (item.customer_type && item.customer_type.toLowerCase().includes(q)) ||
         (item.manager && item.manager.toLowerCase().includes(q)) ||
         (item.interestedStocks && item.interestedStocks.toLowerCase().includes(q)) ||
+        (item.interested_stocks && item.interested_stocks.toLowerCase().includes(q)) ||
         (item.memo && item.memo.toLowerCase().includes(q)) ||
         (item.bankName && item.bankName.toLowerCase().includes(q)) ||
+        (item.bank_name && item.bank_name.toLowerCase().includes(q)) ||
         (item.accountNumber && item.accountNumber.toLowerCase().includes(q)) ||
+        (item.account_number && item.account_number.toLowerCase().includes(q)) ||
         (item.accountHolder && item.accountHolder.toLowerCase().includes(q)) ||
+        (item.account_holder && item.account_holder.toLowerCase().includes(q)) ||
         (item.status && item.status.toLowerCase().includes(q)) ||
         (item.address && item.address.toLowerCase().includes(q)) ||
         (item.email && item.email.toLowerCase().includes(q)),
       companies: (item) =>
         (item.stock_name && item.stock_name.toLowerCase().includes(q)) ||
+        (item.stockName && item.stockName.toLowerCase().includes(q)) ||
         (item.industry && item.industry.toLowerCase().includes(q)) ||
         (item.memo && item.memo.toLowerCase().includes(q)) ||
         (item.par_value && String(item.par_value).toLowerCase().includes(q)) ||
+        (item.parValue && String(item.parValue).toLowerCase().includes(q)) ||
         (item.total_shares && String(item.total_shares).toLowerCase().includes(q)) ||
+        (item.totalShares && String(item.totalShares).toLowerCase().includes(q)) ||
         (item.listing_status && item.listing_status.toLowerCase().includes(q)) ||
-        (item.company_name && item.company_name.toLowerCase().includes(q)),
+        (item.listingStatus && item.listingStatus.toLowerCase().includes(q)) ||
+        (item.company_name && item.company_name.toLowerCase().includes(q)) ||
+        (item.companyName && item.companyName.toLowerCase().includes(q)),
       transactions: (item) =>
         (item.stock_name && item.stock_name.toLowerCase().includes(q)) ||
+        (item.stockName && item.stockName.toLowerCase().includes(q)) ||
         (item.customer_name && item.customer_name.toLowerCase().includes(q)) ||
         (item.customerName && item.customerName.toLowerCase().includes(q)) ||
         (item.buyer && item.buyer.toLowerCase().includes(q)) ||
@@ -545,15 +586,74 @@ function searchFromLocalStorage(query: string): SearchItem[] {
         (item.manager && item.manager.toLowerCase().includes(q)) ||
         (item.memo && item.memo.toLowerCase().includes(q)) ||
         (item.date && item.date.toLowerCase().includes(q)) ||
-        (item.transaction_type && item.transaction_type.toLowerCase().includes(q)),
+        (item.transaction_type && item.transaction_type.toLowerCase().includes(q)) ||
+        (item.transactionType && item.transactionType.toLowerCase().includes(q)) ||
+        (item.price && String(item.price).toLowerCase().includes(q)) ||
+        (item.quantity && String(item.quantity).toLowerCase().includes(q)),
       priceChecks: (item) =>
         (item.stock_name && item.stock_name.toLowerCase().includes(q)) ||
+        (item.stockName && item.stockName.toLowerCase().includes(q)) ||
         (item.holder_company && item.holder_company.toLowerCase().includes(q)) ||
+        (item.holderCompany && item.holderCompany.toLowerCase().includes(q)) ||
         (item.memo && item.memo.toLowerCase().includes(q)) ||
         (item.date && item.date.toLowerCase().includes(q)) ||
         (item.current_price && String(item.current_price).toLowerCase().includes(q)) ||
+        (item.currentPrice && String(item.currentPrice).toLowerCase().includes(q)) ||
         (item.holder_name && item.holder_name.toLowerCase().includes(q)) ||
+        (item.holderName && item.holderName.toLowerCase().includes(q)) ||
         (item.custodian && item.custodian.toLowerCase().includes(q)),
+      requests: (item) =>
+        (item.client_name && item.client_name.toLowerCase().includes(q)) ||
+        (item.clientName && item.clientName.toLowerCase().includes(q)) ||
+        (item.target_stock && item.target_stock.toLowerCase().includes(q)) ||
+        (item.targetStock && item.targetStock.toLowerCase().includes(q)) ||
+        (item.contact && item.contact.toLowerCase().includes(q)) ||
+        (item.memo && item.memo.toLowerCase().includes(q)) ||
+        (item.desired_price && String(item.desired_price).toLowerCase().includes(q)) ||
+        (item.desiredPrice && String(item.desiredPrice).toLowerCase().includes(q)) ||
+        (item.request_date && item.request_date.toLowerCase().includes(q)) ||
+        (item.requestDate && item.requestDate.toLowerCase().includes(q)) ||
+        (item.status && item.status.toLowerCase().includes(q)) ||
+        (item.request_type && item.request_type.toLowerCase().includes(q)) ||
+        (item.requestType && item.requestType.toLowerCase().includes(q)) ||
+        (item.quantity && String(item.quantity).toLowerCase().includes(q)),
+      accounts: (item) =>
+        (item.bank_name && item.bank_name.toLowerCase().includes(q)) ||
+        (item.bankName && item.bankName.toLowerCase().includes(q)) ||
+        (item.account_number && item.account_number.toLowerCase().includes(q)) ||
+        (item.accountNumber && item.accountNumber.toLowerCase().includes(q)) ||
+        (item.account_holder && item.account_holder.toLowerCase().includes(q)) ||
+        (item.accountHolder && item.accountHolder.toLowerCase().includes(q)) ||
+        (item.purpose && item.purpose.toLowerCase().includes(q)) ||
+        (item.memo && item.memo.toLowerCase().includes(q)) ||
+        (item.account_name && item.account_name.toLowerCase().includes(q)) ||
+        (item.accountName && item.accountName.toLowerCase().includes(q)),
+      memos: (item) =>
+        (item.title && item.title.toLowerCase().includes(q)) ||
+        (item.content && item.content.toLowerCase().includes(q)) ||
+        (item.date && item.date.toLowerCase().includes(q)) ||
+        (item.created_at && item.created_at.toLowerCase().includes(q)) ||
+        (item.createdAt && item.createdAt.toLowerCase().includes(q)) ||
+        (item.tags && String(item.tags).toLowerCase().includes(q)) ||
+        (item.category && item.category.toLowerCase().includes(q)),
+      tasks: (item) =>
+        (item.title && item.title.toLowerCase().includes(q)) ||
+        (item.description && item.description.toLowerCase().includes(q)) ||
+        (item.client && item.client.toLowerCase().includes(q)) ||
+        (item.related_stock && item.related_stock.toLowerCase().includes(q)) ||
+        (item.relatedStock && item.relatedStock.toLowerCase().includes(q)) ||
+        (item.memo && item.memo.toLowerCase().includes(q)) ||
+        (item.status && item.status.toLowerCase().includes(q)) ||
+        (item.due_date && item.due_date.toLowerCase().includes(q)) ||
+        (item.dueDate && item.dueDate.toLowerCase().includes(q)) ||
+        (item.priority && item.priority.toLowerCase().includes(q)),
+      diary: (item) =>
+        (item.content && item.content.toLowerCase().includes(q)) ||
+        (item.date && item.date.toLowerCase().includes(q)) ||
+        (item.mood && item.mood.toLowerCase().includes(q)) ||
+        (item.weather && item.weather.toLowerCase().includes(q)) ||
+        (item.title && item.title.toLowerCase().includes(q)),
+    };tem.custodian.toLowerCase().includes(q)),
       requests: (item) =>
         (item.client_name && item.client_name.toLowerCase().includes(q)) ||
         (item.clientName && item.clientName.toLowerCase().includes(q)) ||
