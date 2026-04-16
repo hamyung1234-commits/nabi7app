@@ -1288,28 +1288,30 @@ body {
   .mobile-menu-btn {
     display: flex !important;
   }
-}ton,
-  .btn,
-  a,
-  input[type="button"],
-  input[type="submit"],
-  input[type="reset"],
-  .category-item,
-  .calendar-day,
-  .sidebar-logo {
-    min-width: 44px;
-    min-height: 44px;
-  }
+}
 
-  /* Adjust specific elements */
-  .form-inline .form-input {
-    min-height: 44px;
-  }
+/* Touch targets for mobile */
+button,
+.btn,
+a,
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+.category-item,
+.calendar-day,
+.sidebar-logo {
+  min-width: 44px;
+  min-height: 44px;
+}
 
-  /* Table row touch targets */
-  .table tbody tr {
-    min-height: 44px;
-  }
+/* Adjust specific elements */
+.form-inline .form-input {
+  min-height: 44px;
+}
+
+/* Table row touch targets */
+.table tbody tr {
+  min-height: 44px;
 }
 
 /* ============================================
