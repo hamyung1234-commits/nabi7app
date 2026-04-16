@@ -1,14 +1,26 @@
 import { createClient } from '@supabase/supabase-js'
 
-// Read Supabase credentials from environment variables
-// These are set in .env file (for local development) or Vercel/Netlify environment
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Check if Supabase is properly configured with valid credentials
+function checkSupabaseConfig() {
+  const url = import.meta.env.VITE_SUPABASE_URL;
+  const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  
+  // Must have valid, non-empty, non-placeholder values
+  return !!(
+    url && key &&
+    url !== '' && key !== '' &&
+    !url.includes('placeholder') &&
+    !key.includes('placeholder')
+  );
+}
+
+// Check configuration
+const isConfigured = checkSupabaseConfig();
 
 // Only create Supabase client if credentials are properly configured
-// Otherwise, the app will work with localStorage only
-const supabase = (supabaseUrl && supabaseAnonKey && supabaseUrl !== '' && supabaseAnonKey !== '')
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : createClient('https://placeholder.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTExNjE1MTYsImV4cCI6MjAyNjczNzUxNn0.placeholder');
+// Otherwise, set to null and skip all Supabase operations
+export const supabase = isConfigured
+  ? createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY)
+  : null;
 
-export default supabase;
+export const isSupabaseConfigured = isConfigured;

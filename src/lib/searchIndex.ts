@@ -149,13 +149,18 @@ function createSearchItem(type: string, data: any): SearchItem {
   };
 }
 
-// Check if Supabase is configured - ALWAYS returns true now
-// localStorage is always the primary data source
+// Check if Supabase is properly configured with valid credentials
 function isSupabaseConfigured(): boolean {
-  // Always return true - we want to try Supabase when available
-  // But localStorage is always the primary data source
-  // If Supabase fails, results will still come from localStorage
-  return true;
+  const url = import.meta.env.VITE_SUPABASE_URL;
+  const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  
+  // Must have valid, non-placeholder values
+  return !!(
+    url && key &&
+    url !== '' && key !== '' &&
+    !url.includes('placeholder') &&
+    !key.includes('placeholder')
+  );
 }
 
 /**

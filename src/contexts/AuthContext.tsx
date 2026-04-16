@@ -21,18 +21,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if we have Supabase credentials
+    // Check if we have valid Supabase credentials (not placeholders)
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-    if (!supabaseUrl || !supabaseKey) {
-      console.warn('Supabase not configured, using local storage only');
+    // Check if credentials are valid (not empty, not placeholder)
+    const hasValidCredentials = 
+      supabaseUrl && supabaseKey && 
+      supabaseUrl !== '' && supabaseKey !== '' &&
+      !supabaseUrl.includes('placeholder') &&
+      !supabaseKey.includes('placeholder');
+
+    if (!hasValidCredentials) {
+      console.log('[AuthContext] No valid Supabase credentials - using local storage only');
       setLoading(false);
       return;
     }
 
+    // Valid credentials found - attempt to get current user
     supabase.auth.getUser().then(({ data }) => {
       setUser(data.user as User | null);
+      setLoading(false);
+    }).catch((error) => {
+      console.warn('[AuthContext] Failed to get user:', error);
       setLoading(false);
     });
 
@@ -44,7 +55,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    const hasValidCredentials = 
+      supabaseUrl && supabaseKey && 
+      supabaseUrl !== '' && supabaseKey !== '' &&
+      !supabaseUrl.includes('placeholder') &&
+      !supabaseKey.includes('placeholder');
+    
+    if (hasValidCredentials) {
+      await supabase.auth.signOut();
+    }
     setUser(null);
   };
 

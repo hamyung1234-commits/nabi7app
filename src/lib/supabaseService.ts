@@ -1,9 +1,10 @@
 /**
  * Supabase Service Layer
  * Handles all database operations for 나비 (Nabi) app
+ * Safely handles cases when Supabase is not configured
  */
 
-import supabase from './supabase';
+import { supabase, isSupabaseConfigured } from './supabase';
 
 // Type definitions
 export interface Customer {
@@ -134,6 +135,7 @@ export interface Task {
 // =====================================================
 export const customersService = {
   async getAll(): Promise<Customer[]> {
+    if (!supabase || !isSupabaseConfigured) return [];
     const { data, error } = await supabase
       .from('customers')
       .select('*')
@@ -143,6 +145,7 @@ export const customersService = {
   },
 
   async create(customer: Omit<Customer, 'id' | 'created_at' | 'updated_at'>): Promise<Customer> {
+    if (!supabase || !isSupabaseConfigured) throw new Error('Supabase not configured');
     const { data, error } = await supabase
       .from('customers')
       .insert([customer])
@@ -153,6 +156,7 @@ export const customersService = {
   },
 
   async update(id: string, customer: Partial<Customer>): Promise<Customer> {
+    if (!supabase || !isSupabaseConfigured) throw new Error('Supabase not configured');
     const { data, error } = await supabase
       .from('customers')
       .update({ ...customer, updated_at: new Date().toISOString() })
@@ -164,6 +168,7 @@ export const customersService = {
   },
 
   async delete(id: string): Promise<void> {
+    if (!supabase || !isSupabaseConfigured) throw new Error('Supabase not configured');
     const { error } = await supabase.from('customers').delete().eq('id', id);
     if (error) throw error;
   },
@@ -174,6 +179,7 @@ export const customersService = {
 // =====================================================
 export const companiesService = {
   async getAll(): Promise<Company[]> {
+    if (!supabase || !isSupabaseConfigured) return [];
     const { data, error } = await supabase
       .from('companies')
       .select('*')
@@ -183,6 +189,7 @@ export const companiesService = {
   },
 
   async create(company: Omit<Company, 'id' | 'created_at' | 'updated_at'>): Promise<Company> {
+    if (!supabase || !isSupabaseConfigured) throw new Error('Supabase not configured');
     const { data, error } = await supabase
       .from('companies')
       .insert([company])
@@ -193,6 +200,7 @@ export const companiesService = {
   },
 
   async update(id: string, company: Partial<Company>): Promise<Company> {
+    if (!supabase || !isSupabaseConfigured) throw new Error('Supabase not configured');
     const { data, error } = await supabase
       .from('companies')
       .update({ ...company, updated_at: new Date().toISOString() })
@@ -204,6 +212,7 @@ export const companiesService = {
   },
 
   async delete(id: string): Promise<void> {
+    if (!supabase || !isSupabaseConfigured) throw new Error('Supabase not configured');
     const { error } = await supabase.from('companies').delete().eq('id', id);
     if (error) throw error;
   },

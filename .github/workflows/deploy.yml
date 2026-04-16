@@ -34,7 +34,7 @@ jobs:
             VITE_SUPABASE_ANON_KEY
           
       - name: Install dependencies
-        run: npm ci
+        run: npm ci && npm install esbuild@0.20.0 --save-dev
         
       - name: Build
         run: npm run build
