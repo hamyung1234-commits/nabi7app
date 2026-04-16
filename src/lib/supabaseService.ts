@@ -792,6 +792,22 @@ export const countsService = {
   },
 
   async getAllCounts(): Promise<Record<string, number>> {
+    if (!supabase || !isSupabaseConfigured) {
+      console.log('[countsService] Supabase not configured, returning empty counts');
+      return {
+        customer: 0,
+        company: 0,
+        transaction: 0,
+        pricecheck: 0,
+        request: 0,
+        account: 0,
+        memo: 0,
+        task: 0,
+        diary: 0,
+        'in-progress-requests': 0
+      };
+    }
+
     try {
       const [
         customersCount,
