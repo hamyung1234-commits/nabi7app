@@ -1,2 +1,3 @@
-// No post-build fixing needed - vite handles paths correctly
-console.log('Build complete');
+// post-build-fix.js
+// No additional path fixing needed - vite.config.ts handles base path correctly
+console.log('Build complete - nabi7app base path configured');
