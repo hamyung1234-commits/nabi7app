@@ -2,8 +2,8 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
-// Base path: for Surge deployment, use root path
-const base = process.env.VITE_BASE_URL || '/';
+// Base path: root path for clean URLs
+const base = '/'
 
 export default defineConfig({
   plugins: [react()],
@@ -16,5 +16,9 @@ export default defineConfig({
   server: {
     port: 3000,
     open: true,
+  },
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
   },
 })
