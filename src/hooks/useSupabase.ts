@@ -1,225 +1,371 @@
 /**
- * Supabase Hook - 데이터 동기화 및 실시간 업데이트
+ * useSupabase Hook - Unified Supabase-first data management
+ * Prioritizes Supabase operations with localStorage fallback
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import supabase from '../lib/supabase';
-import {
-  customersService,
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { 
+  memosService, 
+  priceChecksService, 
+  clientRequestsService, 
   companiesService,
   transactionsService,
-  priceChecksService,
-  clientRequestsService,
+  tasksService,
   accountsService,
   diaryEntriesService,
-  memosService,
-  tasksService,
-  migrateFromLocalStorage,
-  type Customer,
-  type Company,
-  type Transaction,
-  type PriceCheck,
-  type ClientRequest,
-  type Account,
-  type DiaryEntry,
-  type Memo,
-  type Task,
+  customersService,
+  globalSearch
 } from '../lib/supabaseService';
+import { useAppState } from './useLocalStorage';
+import { useCounts } from '../contexts/CountContext';
 
-export interface UseSupabaseOptions {
-  enableSync?: boolean;
-  autoLoad?: boolean;
+export type DataType = 'memos' | 'priceChecks' | 'clientRequests' | 'companies' | 'transactions' | 'tasks' | 'accounts' | 'diaryEntries' | 'customers';
+
+interface UseSupabaseOptions {
+  dataType: DataType;
+  enableRealtime?: boolean;
 }
 
-export interface SyncStatus {
-  isLoading: boolean;
-  isSyncing: boolean;
-  isConnected: boolean;
-  lastSynced: Date | null;
+interface UseSupabaseReturn<T> {
+  data: T[];
+  loading: boolean;
   error: string | null;
+  isSupabaseActive: boolean;
+  create: (item: Omit<T, 'id' | 'created_at' | 'updated_at'>) => Promise<T | null>;
+  update: (id: string, item: Partial<T>) => Promise<T | null>;
+  delete: (id: string) => Promise<boolean>;
+  refresh: () => Promise<void>;
+  search: (query: string) => Promise<any[]>;
 }
 
-export function useSupabase(options: UseSupabaseOptions = {}) {
-  const { enableSync = false, autoLoad = true } = options;
+// Service mapping
+const serviceMap = {
+  memos: memosService,
+  priceChecks: priceChecksService,
+  clientRequests: clientRequestsService,
+  companies: companiesService,
+  transactions: transactionsService,
+  tasks: tasksService,
+  accounts: accountsService,
+  diaryEntries: diaryEntriesService,
+  customers: customersService,
+};
 
-  // 데이터 상태
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [priceChecks, setPriceChecks] = useState<PriceCheck[]>([]);
-  const [clientRequests, setClientRequests] = useState<ClientRequest[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [diaryEntries, setDiaryEntries] = useState<DiaryEntry[]>([]);
-  const [memos, setMemos] = useState<Memo[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
+// Count type mapping
+const countTypeMap = {
+  memos: 'memo',
+  priceChecks: 'pricecheck',
+  clientRequests: 'request',
+  companies: 'company',
+  transactions: 'transaction',
+  tasks: 'task',
+  accounts: 'account',
+  diaryEntries: 'diary',
+  customers: 'customer',
+} as const;
 
-  // 동기화 상태
-  const [syncStatus, setSyncStatus] = useState<SyncStatus>({
-    isLoading: false,
-    isSyncing: false,
-    isConnected: false,
-    lastSynced: null,
-    error: null,
-  });
+export function useSupabase<T = any>({ dataType, enableRealtime = false }: UseSupabaseOptions): UseSupabaseReturn<T> {
+  const [data, setData] = useState<T[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isSupabaseActive, setIsSupabaseActive] = useState(false);
 
-  // 연결 상태 확인
-  useEffect(() => {
-    const checkConnection = async () => {
-      try {
-        const { error } = await supabase.from('customers').select('id').limit(1);
-        setSyncStatus(prev => ({
-          ...prev,
-          isConnected: !error,
-          error: error?.message || null,
-        }));
-      } catch {
-        setSyncStatus(prev => ({
-          ...prev,
-          isConnected: false,
-          error: 'Failed to connect to Supabase',
-        }));
-      }
-    };
-    checkConnection();
-  }, []);
+  // Get localStorage fallback data
+  const appState = useAppState();
+  const localStorageData = appState[dataType] || [];
+  const localStorageSetters = {
+    memos: appState.setMemos,
+    priceChecks: appState.setPriceChecks,
+    clientRequests: appState.setClientRequests,
+    companies: appState.setCompanies,
+    transactions: appState.setTransactions,
+    tasks: appState.setTasks,
+    accounts: appState.setAccounts,
+    diaryEntries: appState.setDiaryEntries,
+    customers: appState.setCustomers,
+  };
 
-  // 전체 데이터 로드
-  const loadAllData = useCallback(async () => {
-    if (!syncStatus.isConnected) return;
+  // Count management
+  const { incrementCount, decrementCount, refreshCounts } = useCounts();
+  const countType = countTypeMap[dataType];
 
-    setSyncStatus(prev => ({ ...prev, isLoading: true }));
+  const service = serviceMap[dataType];
+
+  // Load data (Supabase-first)
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
 
     try {
-      const [
-        customersData,
-        companiesData,
-        transactionsData,
-        priceChecksData,
-        clientRequestsData,
-        accountsData,
-        diaryEntriesData,
-        memosData,
-        tasksData,
-      ] = await Promise.all([
-        customersService.getAll(),
-        companiesService.getAll(),
-        transactionsService.getAll(),
-        priceChecksService.getAll(),
-        clientRequestsService.getAll(),
-        accountsService.getAll(),
-        diaryEntriesService.getAll(),
-        memosService.getAll(),
-        tasksService.getAll(),
-      ]);
-
-      setCustomers(customersData);
-      setCompanies(companiesData);
-      setTransactions(transactionsData);
-      setPriceChecks(priceChecksData);
-      setClientRequests(clientRequestsData);
-      setAccounts(accountsData);
-      setDiaryEntries(diaryEntriesData);
-      setMemos(memosData);
-      setTasks(tasksData);
-
-      setSyncStatus(prev => ({
-        ...prev,
-        isLoading: false,
-        lastSynced: new Date(),
-        error: null,
-      }));
-    } catch (error: any) {
-      setSyncStatus(prev => ({
-        ...prev,
-        isLoading: false,
-        error: error.message,
-      }));
+      if (isSupabaseConfigured && service) {
+        console.log(`[useSupabase] Loading ${dataType} from Supabase...`);
+        const supabaseData = await service.getAll();
+        setData(supabaseData as T[]);
+        setIsSupabaseActive(true);
+        
+        // Sync with localStorage for offline access
+        const setter = localStorageSetters[dataType];
+        if (setter) {
+          setter(supabaseData);
+        }
+        
+        console.log(`[useSupabase] Loaded ${supabaseData.length} items from Supabase`);
+      } else {
+        // Fallback to localStorage
+        console.log(`[useSupabase] Supabase not available, using localStorage for ${dataType}`);
+        setData(localStorageData);
+        setIsSupabaseActive(false);
+      }
+    } catch (err) {
+      console.warn(`[useSupabase] Supabase error for ${dataType}, falling back to localStorage:`, err);
+      setError(err instanceof Error ? err.message : 'Unknown error');
+      setData(localStorageData);
+      setIsSupabaseActive(false);
+    } finally {
+      setLoading(false);
     }
-  }, [syncStatus.isConnected]);
+  }, [dataType, service, localStorageData, localStorageSetters]);
 
-  // 자동 로드
-  useEffect(() => {
-    if (autoLoad && syncStatus.isConnected) {
-      loadAllData();
+  // Create item
+  const create = useCallback(async (item: Omit<T, 'id' | 'created_at' | 'updated_at'>): Promise<T | null> => {
+    try {
+      if (isSupabaseActive && service) {
+        console.log(`[useSupabase] Creating ${dataType} in Supabase...`);
+        const newItem = await service.create(item as any);
+        
+        // Update local state
+        setData(prev => [newItem as T, ...prev]);
+        
+        // Update localStorage
+        const setter = localStorageSetters[dataType];
+        if (setter) {
+          setter((prev: any[]) => [newItem, ...prev]);
+        }
+        
+        // Update counts
+        if (countType) {
+          incrementCount(countType as any);
+        }
+        
+        console.log(`[useSupabase] Created ${dataType} successfully`);
+        return newItem as T;
+      } else {
+        // Fallback to localStorage only
+        const newItem = {
+          id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          ...item,
+        } as T;
+        
+        setData(prev => [newItem, ...prev]);
+        const setter = localStorageSetters[dataType];
+        if (setter) {
+          setter((prev: any[]) => [newItem, ...prev]);
+        }
+        
+        if (countType) {
+          incrementCount(countType as any);
+        }
+        
+        return newItem;
+      }
+    } catch (err) {
+      console.error(`[useSupabase] Create error for ${dataType}:`, err);
+      setError(err instanceof Error ? err.message : 'Create failed');
+      return null;
     }
-  }, [autoLoad, syncStatus.isConnected, loadAllData]);
+  }, [isSupabaseActive, service, dataType, countType, incrementCount, localStorageSetters]);
 
-  // 실시간 구독 (선택적)
+  // Update item
+  const update = useCallback(async (id: string, updates: Partial<T>): Promise<T | null> => {
+    try {
+      if (isSupabaseActive && service) {
+        console.log(`[useSupabase] Updating ${dataType} in Supabase...`);
+        const updatedItem = await service.update(id, updates as any);
+        
+        // Update local state
+        setData(prev => prev.map(item => 
+          (item as any).id === id ? updatedItem as T : item
+        ));
+        
+        // Update localStorage
+        const setter = localStorageSetters[dataType];
+        if (setter) {
+          setter((prev: any[]) => prev.map((item: any) => 
+            item.id === id ? updatedItem : item
+          ));
+        }
+        
+        return updatedItem as T;
+      } else {
+        // Fallback to localStorage only
+        const updatedItem = { 
+          ...updates, 
+          updated_at: new Date().toISOString() 
+        };
+        
+        setData(prev => prev.map(item => 
+          (item as any).id === id ? { ...item, ...updatedItem } : item
+        ));
+        
+        const setter = localStorageSetters[dataType];
+        if (setter) {
+          setter((prev: any[]) => prev.map((item: any) => 
+            item.id === id ? { ...item, ...updatedItem } : item
+          ));
+        }
+        
+        return { ...updatedItem } as T;
+      }
+    } catch (err) {
+      console.error(`[useSupabase] Update error for ${dataType}:`, err);
+      setError(err instanceof Error ? err.message : 'Update failed');
+      return null;
+    }
+  }, [isSupabaseActive, service, dataType, localStorageSetters]);
+
+  // Delete item
+  const delete_ = useCallback(async (id: string): Promise<boolean> => {
+    try {
+      if (isSupabaseActive && service) {
+        console.log(`[useSupabase] Deleting ${dataType} from Supabase...`);
+        await service.delete(id);
+        
+        // Update local state
+        setData(prev => prev.filter(item => (item as any).id !== id));
+        
+        // Update localStorage
+        const setter = localStorageSetters[dataType];
+        if (setter) {
+          setter((prev: any[]) => prev.filter((item: any) => item.id !== id));
+        }
+        
+        // Update counts
+        if (countType) {
+          decrementCount(countType as any);
+        }
+        
+        console.log(`[useSupabase] Deleted ${dataType} successfully`);
+        return true;
+      } else {
+        // Fallback to localStorage only
+        setData(prev => prev.filter(item => (item as any).id !== id));
+        const setter = localStorageSetters[dataType];
+        if (setter) {
+          setter((prev: any[]) => prev.filter((item: any) => item.id !== id));
+        }
+        
+        if (countType) {
+          decrementCount(countType as any);
+        }
+        
+        return true;
+      }
+    } catch (err) {
+      console.error(`[useSupabase] Delete error for ${dataType}:`, err);
+      setError(err instanceof Error ? err.message : 'Delete failed');
+      return false;
+    }
+  }, [isSupabaseActive, service, dataType, countType, decrementCount, localStorageSetters]);
+
+  // Refresh data
+  const refresh = useCallback(async () => {
+    await loadData();
+    // Also refresh counts
+    await refreshCounts();
+  }, [loadData, refreshCounts]);
+
+  // Search function
+  const search = useCallback(async (query: string): Promise<any[]> => {
+    try {
+      if (isSupabaseActive) {
+        return await globalSearch(query);
+      } else {
+        // Local search fallback
+        const lowerQuery = query.toLowerCase();
+        return data.filter((item: any) => 
+          JSON.stringify(item).toLowerCase().includes(lowerQuery)
+        ).slice(0, 10); // Limit to 10 results
+      }
+    } catch (err) {
+      console.error(`[useSupabase] Search error:`, err);
+      return [];
+    }
+  }, [isSupabaseActive, data]);
+
+  // Load data on mount
   useEffect(() => {
-    if (!enableSync) return;
+    loadData();
+  }, [loadData]);
+
+  // Setup realtime subscription if enabled
+  useEffect(() => {
+    if (!enableRealtime || !isSupabaseActive || !supabase) return;
+
+    console.log(`[useSupabase] Setting up realtime for ${dataType}`);
+    
+    const tableName = dataType === 'priceChecks' ? 'price_checks' : 
+                     dataType === 'clientRequests' ? 'client_requests' :
+                     dataType === 'diaryEntries' ? 'diary_entries' :
+                     dataType;
 
     const channel = supabase
-      .channel('schema-db-changes')
-      .on('postgres_changes', { event: '*', schema: 'public' }, (payload) => {
-        console.log('Supabase change:', payload);
-        loadAllData(); // 변경 시 데이터 다시 로드
+      .channel(`public:${tableName}`)
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: tableName 
+      }, (payload) => {
+        console.log(`[useSupabase] Realtime change for ${dataType}:`, payload);
+        // Refresh data on any change
+        loadData();
       })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [enableSync, loadAllData]);
-
-  // 마이그레이션 실행
-  const migrateData = useCallback(async () => {
-    setSyncStatus(prev => ({ ...prev, isSyncing: true }));
-    const result = await migrateFromLocalStorage();
-    if (result.success) {
-      await loadAllData();
-    }
-    setSyncStatus(prev => ({ ...prev, isSyncing: false }));
-    return result;
-  }, [loadAllData]);
+  }, [enableRealtime, isSupabaseActive, dataType, loadData]);
 
   return {
-    // 데이터
-    customers,
-    companies,
-    transactions,
-    priceChecks,
-    clientRequests,
-    accounts,
-    diaryEntries,
-    memos,
-    tasks,
-
-    // 세터 (Supabase에 직접 저장)
-    setCustomers,
-    setCompanies,
-    setTransactions,
-    setPriceChecks,
-    setClientRequests,
-    setAccounts,
-    setDiaryEntries,
-    setMemos,
-    setTasks,
-
-    // 서비스
-    services: {
-      customers: customersService,
-      companies: companiesService,
-      transactions: transactionsService,
-      priceChecks: priceChecksService,
-      clientRequests: clientRequestsService,
-      accounts: accountsService,
-      diaryEntries: diaryEntriesService,
-      memos: memosService,
-      tasks: tasksService,
-    },
-
-    // 동기화
-    syncStatus,
-    loadAllData,
-    migrateData,
+    data,
+    loading,
+    error,
+    isSupabaseActive,
+    create,
+    update,
+    delete: delete_,
+    refresh,
+    search,
   };
 }
 
-// =====================================================
-// 사용 예시 (App.tsx에서)
-//
-// 1. Supabase가 연결되어 있으면 Supabase 데이터 사용
-// 2. 연결되어 있지 않으면 localStorage 사용
-// 3. 마이그레이션 버튼으로 localStorage → Supabase 이동 가능
-//
-// =====================================================
+// Convenience hooks for specific data types
+export const useMemos = (options?: Omit<UseSupabaseOptions, 'dataType'>) => 
+  useSupabase<any>({ dataType: 'memos', ...options });
+
+export const usePriceChecks = (options?: Omit<UseSupabaseOptions, 'dataType'>) => 
+  useSupabase<any>({ dataType: 'priceChecks', ...options });
+
+export const useClientRequests = (options?: Omit<UseSupabaseOptions, 'dataType'>) => 
+  useSupabase<any>({ dataType: 'clientRequests', ...options });
+
+export const useCompanies = (options?: Omit<UseSupabaseOptions, 'dataType'>) => 
+  useSupabase<any>({ dataType: 'companies', ...options });
+
+export const useTransactions = (options?: Omit<UseSupabaseOptions, 'dataType'>) => 
+  useSupabase<any>({ dataType: 'transactions', ...options });
+
+export const useTasks = (options?: Omit<UseSupabaseOptions, 'dataType'>) => 
+  useSupabase<any>({ dataType: 'tasks', ...options });
+
+export const useAccounts = (options?: Omit<UseSupabaseOptions, 'dataType'>) => 
+  useSupabase<any>({ dataType: 'accounts', ...options });
+
+export const useDiaryEntries = (options?: Omit<UseSupabaseOptions, 'dataType'>) => 
+  useSupabase<any>({ dataType: 'diaryEntries', ...options });
+
+export const useCustomers = (options?: Omit<UseSupabaseOptions, 'dataType'>) => 
+  useSupabase<any>({ dataType: 'customers', ...options });

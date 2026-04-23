@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useAppState } from '../hooks/useLocalStorage';
+import { useMemos } from '../hooks/useSupabase';
 import { CATEGORIES, generateId } from '../types';
 import { useCounts } from '../contexts/CountContext';
 
@@ -12,8 +13,9 @@ interface MemoPageProps {
 }
 
 export default function MemoPage({ selectedItemId, selectedItemType, highlightedItemId, onClearSelection }: MemoPageProps = {}) {
-  const { memos, setMemos, priceChecks, clientRequests, selectedDate } = useAppState();
-  const { incrementCount, decrementCount } = useCounts();
+  const { selectedDate } = useAppState();
+  const { data: memos, create: createMemo, delete: deleteMemo, loading, isSupabaseActive } = useMemos();
+  const { counts } = useCounts();
   const [memoContent, setMemoContent] = useState('');
   const [autoClassified, setAutoClassified] = useState<{ category: string; items: string[] } | null>(null);
   const [selectedMemo, setSelectedMemo] = useState<any | null>(null);
@@ -71,29 +73,34 @@ export default function MemoPage({ selectedItemId, selectedItemType, highlighted
     setAutoClassified(detected);
   };
 
-  const handleSaveAndClassify = () => {
+  const handleSaveAndClassify = async () => {
     if (!memoContent.trim()) return;
     const category = autoClassified?.category || 'memo';
-    const newMemo = {
-      id: generateId(),
+    const newMemoData = {
+      title: `메모 ${new Date().toLocaleTimeString('ko-KR')}`,
       content: memoContent,
       category: category as any,
       tags: [category],
       date: selectedDate,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
     };
-    setMemos((prev: any) => [...prev, newMemo]);
-    incrementCount('memo');
-    setMemoContent('');
-    setAutoClassified(null);
+    
+    try {
+      await createMemo(newMemoData);
+      setMemoContent('');
+      setAutoClassified(null);
+    } catch (error) {
+      console.error('메모 저장 실패:', error);
+    }
   };
 
-  const handleDeleteMemo = (id: string) => {
-    setMemos((prev: any) => prev.filter((m: any) => m.id !== id));
-    decrementCount('memo');
-    if (selectedMemo?.id === id) {
-      setSelectedMemo(null);
+  const handleDeleteMemo = async (id: string) => {
+    try {
+      await deleteMemo(id);
+      if (selectedMemo?.id === id) {
+        setSelectedMemo(null);
+      }
+    } catch (error) {
+      console.error('메모 삭제 실패:', error);
     }
   };
 
@@ -178,15 +185,21 @@ export default function MemoPage({ selectedItemId, selectedItemType, highlighted
         <div className="Summary-card price-check">
           <div className="Summary-card-label">오늘의 시세체크</div>
           <div className="Summary-card-value">
-            {priceChecks.filter((p: any) => p.date === selectedDate).length}
+            {counts.pricecheck}
           </div>
         </div>
         <div className="Summary-card client-requests">
           <div className="Summary-card-label">진행중 의뢰</div>
           <div className="Summary-card-value">
-            {clientRequests.filter((c: any) => c.status === 'in-progress').length}
+            {counts['in-progress-requests']}
           </div>
         </div>
+      </div>
+      
+      {/* Supabase Status Indicator */}
+      <div style={{ marginBottom: 'var(--spacing-md)', padding: 'var(--spacing-sm)', background: isSupabaseActive ? '#d4edda' : '#f8d7da', borderRadius: 'var(--radius-sm)', fontSize: 'var(--font-sm)' }}>
+        🔗 데이터 연결: {isSupabaseActive ? '✅ Supabase 연결됨' : '📱 로컬 저장소 사용'} 
+        {loading && ' (로딩 중...)'}
       </div>
 
       <div className="card memo-input-container">

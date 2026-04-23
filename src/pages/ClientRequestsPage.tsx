@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { useAppState } from '../hooks/useLocalStorage';
-import { generateId, formatCurrency } from '../types';
-import { useCounts } from '../contexts/CountContext';
+import { useClientRequests } from '../hooks/useSupabase';
+import { formatCurrency } from '../types';
 
 // Props for search navigation
 interface ClientRequestsPageProps {
@@ -12,10 +11,11 @@ interface ClientRequestsPageProps {
 }
 
 export default function ClientRequestsPage({ selectedItemId, selectedItemType, highlightedItemId, onClearSelection }: ClientRequestsPageProps = {}) {
-  const { clientRequests, setClientRequests } = useAppState();
-  const { incrementCount, decrementCount } = useCounts();
+  const { data: clientRequests, loading, error, isSupabaseActive, create, update: updateRequest, delete: deleteItem, refresh } = useClientRequests();
   const [showForm, setShowForm] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [selectedItem, setSelectedItem] = useState<any | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     clientName: '',
     contact: '',
@@ -27,73 +27,49 @@ export default function ClientRequestsPage({ selectedItemId, selectedItemType, h
     status: 'in-progress' as 'in-progress' | 'completed' | 'pending' | 'on-hold',
     memo: '',
   });
-  
-  // 상세 선택된 항목
-  const [selectedItem, setSelectedItem] = useState<any | null>(null);
-  
+
   // Track if we need to auto-select an item from search
   const hasAutoSelectedRef = useRef(false);
-  // Track the last selected ID to avoid re-processing
   const lastSelectedIdRef = useRef<string | null>(null);
 
-  // Handle selected item from search - ONLY open the detail modal, don't clear selection here
   useEffect(() => {
-    // Only process if we have a valid selection request for this page type
     if (!selectedItemId || !selectedItemType || selectedItemType !== 'request') {
       return;
     }
     
-    // Avoid re-processing the same item
     if (lastSelectedIdRef.current === selectedItemId && hasAutoSelectedRef.current) {
       return;
     }
     
-    // If we don't have any items loaded yet, wait
     if (!clientRequests || clientRequests.length === 0) {
       console.log('[ClientRequestsPage] Waiting for client requests to load...');
       return;
     }
     
     console.log('[ClientRequestsPage] Auto-selecting request:', selectedItemId);
-    console.log('[ClientRequestsPage] Available items:', clientRequests.map((c: any) => c.id));
-    
     lastSelectedIdRef.current = selectedItemId;
     hasAutoSelectedRef.current = true;
     
-    // Find the item and open detail - try both camelCase and snake_case
-    const item = clientRequests.find((c: any) => 
-      c.id === selectedItemId || 
-      c.id?.toString() === selectedItemId?.toString()
-    );
-    
+    const item = clientRequests.find((c: any) => c.id === selectedItemId || c.id?.toString() === selectedItemId?.toString());
     if (item) {
-      console.log('[ClientRequestsPage] Found item:', item.targetStock);
       setSelectedItem(item);
     } else {
-      console.warn('[ClientRequestsPage] Item not found with ID:', selectedItemId);
-      // Try alternative matching
-      const itemAlt = clientRequests.find((c: any) => 
-        selectedItemId?.includes(c.id) || c.id?.includes(selectedItemId)
-      );
+      const itemAlt = clientRequests.find((c: any) => c.id === selectedItemId || selectedItemId.includes(c.id));
       if (itemAlt) {
-        console.log('[ClientRequestsPage] Found item via alternative match:', itemAlt.targetStock);
         setSelectedItem(itemAlt);
       }
     }
-    
-    // NOTE: We do NOT call onClearSelection here - only when user closes the modal
   }, [selectedItemId, selectedItemType, clientRequests]);
 
   const filteredItems = useMemo(() => {
     return clientRequests
       .filter((c: any) => filterStatus === 'all' || c.status === filterStatus)
-      .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      .sort((a: any, b: any) => new Date(b.created_at || b.createdAt).getTime() - new Date(a.created_at || a.createdAt).getTime());
   }, [clientRequests, filterStatus]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const newItem = {
-      id: generateId(),
       clientName: formData.clientName,
       contact: formData.contact,
       targetStock: formData.targetStock,
@@ -103,36 +79,65 @@ export default function ClientRequestsPage({ selectedItemId, selectedItemType, h
       requestDate: formData.requestDate,
       status: formData.status,
       memo: formData.memo,
-      createdAt: new Date().toISOString(),
     };
-    setClientRequests((prev: any) => [...prev, newItem]);
-    incrementCount('request');
-    if (formData.status === 'in-progress') {
-      incrementCount('in-progress-requests');
-    }
+    await create(newItem as any);
     setFormData({ clientName: '', contact: '', targetStock: '', requestType: 'buy', quantity: '', desiredPrice: '', requestDate: new Date().toISOString().split('T')[0], status: 'in-progress', memo: '' });
     setShowForm(false);
   };
 
-  const handleDelete = (id: string) => {
-    const item = clientRequests.find((c: any) => c.id === id);
-    setClientRequests((prev: any) => prev.filter((c: any) => c.id !== id));
-    decrementCount('request');
-    if (item?.status === 'in-progress') {
-      decrementCount('in-progress-requests');
-    }
+  // Edit functionality
+  const handleEdit = (item: any) => {
+    setFormData({
+      clientName: item.clientName || '',
+      contact: item.contact || '',
+      targetStock: item.targetStock || '',
+      requestType: item.requestType || 'buy',
+      quantity: item.quantity?.toString() || '',
+      desiredPrice: item.desiredPrice?.toString() || '',
+      requestDate: item.requestDate || '',
+      status: item.status || 'in-progress',
+      memo: item.memo || '',
+    });
+    setIsEditing(true);
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedItem) return;
+
+    const updatedItem = {
+      clientName: formData.clientName,
+      contact: formData.contact,
+      targetStock: formData.targetStock,
+      requestType: formData.requestType,
+      quantity: Number(formData.quantity),
+      desiredPrice: Number(formData.desiredPrice),
+      requestDate: formData.requestDate,
+      status: formData.status,
+      memo: formData.memo,
+    };
+
+    await updateRequest(selectedItem.id, updatedItem as any);
+    setIsEditing(false);
+    setSelectedItem(null);
+    setFormData({ clientName: '', contact: '', targetStock: '', requestType: 'buy', quantity: '', desiredPrice: '', requestDate: new Date().toISOString().split('T')[0], status: 'in-progress', memo: '' });
+  };
+
+  const handleStatusChange = async (id: string, newStatus: string) => {
+    await updateRequest(id, { status: newStatus } as any);
+  };
+
+  const handleDelete = async (id: string) => {
+    await deleteItem(id);
     if (selectedItem?.id === id) {
       setSelectedItem(null);
+      setIsEditing(false);
     }
   };
 
-  // 하이라이트 스타일
   const getRowStyle = (item: any) => {
     if (highlightedItemId && item.id === highlightedItemId) {
-      return {
-        background: '#FFF9C4',
-        transition: 'background 0.3s ease'
-      };
+      return { background: '#FFF9C4', transition: 'background 0.3s ease' };
     }
     return {};
   };
@@ -161,21 +166,120 @@ export default function ClientRequestsPage({ selectedItemId, selectedItemType, h
     return type === 'buy' ? '매수' : '매도';
   };
 
-  // Close detail handler - ONLY NOW clear the selection
   const handleCloseDetail = () => {
     setSelectedItem(null);
-    // Reset auto-selection tracking
+    setIsEditing(false);
     hasAutoSelectedRef.current = false;
     lastSelectedIdRef.current = null;
-    // Clear the selected item from App state
     if (onClearSelection) {
       onClearSelection();
     }
   };
 
-  // 상세 모달
+  // Loading state
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '24px', marginBottom: '8px' }}>⏳</div>
+          <p>고객 의뢰를 불러오는 중...</p>
+          <p style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>Supabase에서 데이터를 가져오는 중입니다</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div style={{ padding: 'var(--spacing-lg)', textAlign: 'center' }}>
+        <div style={{ color: 'var(--color-error)', marginBottom: 'var(--spacing-md)' }}>
+          <div style={{ fontSize: '24px', marginBottom: '8px' }}>⚠️</div>
+          <p>데이터 로드 중 오류가 발생했습니다</p>
+          <p style={{ fontSize: '12px' }}>{error}</p>
+        </div>
+        <button className="btn btn-primary" onClick={() => refresh()}>다시 시도</button>
+      </div>
+    );
+  }
+
+  // Edit form modal
+  const renderEditForm = () => {
+    if (!isEditing || !selectedItem) return null;
+
+    return (
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ background: 'var(--color-bg-card)', borderRadius: 'var(--radius-lg)', width: '90%', maxWidth: '600px', maxHeight: '90vh', overflow: 'auto', padding: 'var(--spacing-lg)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-lg)' }}>
+            <h2 style={{ fontSize: 'var(--font-xl)' }}>의뢰 수정</h2>
+            <button className="btn btn-secondary btn-sm" onClick={() => { setIsEditing(false); setFormData({ clientName: '', contact: '', targetStock: '', requestType: 'buy', quantity: '', desiredPrice: '', requestDate: new Date().toISOString().split('T')[0], status: 'in-progress', memo: '' }); }}>✕ 취소</button>
+          </div>
+
+          <form onSubmit={handleUpdate}>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">고객명</label>
+                <input type="text" className="form-input" value={formData.clientName} onChange={e => setFormData({ ...formData, clientName: e.target.value })} required />
+              </div>
+              <div className="form-group">
+                <label className="form-label">연락처</label>
+                <input type="text" className="form-input" value={formData.contact} onChange={e => setFormData({ ...formData, contact: e.target.value })} />
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">목표 종목</label>
+                <input type="text" className="form-input" value={formData.targetStock} onChange={e => setFormData({ ...formData, targetStock: e.target.value })} required />
+              </div>
+              <div className="form-group">
+                <label className="form-label">의뢰 유형</label>
+                <select className="form-select" value={formData.requestType} onChange={e => setFormData({ ...formData, requestType: e.target.value as any })}>
+                  <option value="buy">매수</option>
+                  <option value="sell">매도</option>
+                </select>
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">수량</label>
+                <input type="number" className="form-input" value={formData.quantity} onChange={e => setFormData({ ...formData, quantity: e.target.value })} required />
+              </div>
+              <div className="form-group">
+                <label className="form-label">희망 가격</label>
+                <input type="number" className="form-input" value={formData.desiredPrice} onChange={e => setFormData({ ...formData, desiredPrice: e.target.value })} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">의뢰 날짜</label>
+                <input type="date" className="form-input" value={formData.requestDate} onChange={e => setFormData({ ...formData, requestDate: e.target.value })} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">상태</label>
+                <select className="form-select" value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value as any })}>
+                  <option value="in-progress">진행중</option>
+                  <option value="pending">대기</option>
+                  <option value="completed">완료</option>
+                  <option value="on-hold">보류</option>
+                </select>
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">메모</label>
+              <textarea className="form-textarea" value={formData.memo} onChange={e => setFormData({ ...formData, memo: e.target.value })} rows={2} />
+            </div>
+
+            <div style={{ marginTop: 'var(--spacing-lg)', display: 'flex', gap: 'var(--spacing-sm)', justifyContent: 'flex-end' }}>
+              <button type="button" className="btn btn-secondary" onClick={() => setIsEditing(false)}>취소</button>
+              <button type="submit" className="btn btn-primary">수정 저장</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  };
+
+  // Detail modal
   const renderDetail = () => {
-    if (!selectedItem) return null;
+    if (!selectedItem || isEditing) return null;
 
     return (
       <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -186,6 +290,9 @@ export default function ClientRequestsPage({ selectedItemId, selectedItemType, h
               <span style={{ fontSize: 'var(--font-sm)', color: 'var(--color-text-muted)' }}>
                 {selectedItem.clientName} | {getTypeLabel(selectedItem.requestType)}
               </span>
+              {isSupabaseActive && (
+                <span style={{ marginLeft: '8px', fontSize: '10px', padding: '2px 6px', background: 'var(--color-primary)', color: 'white', borderRadius: '4px' }}>Cloud</span>
+              )}
             </div>
             <button className="btn btn-secondary btn-sm" onClick={handleCloseDetail}>✕ 닫기</button>
           </div>
@@ -240,35 +347,14 @@ export default function ClientRequestsPage({ selectedItemId, selectedItemType, h
           <div style={{ marginTop: 'var(--spacing-lg)', display: 'flex', gap: 'var(--spacing-sm)', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
               {selectedItem.status !== 'completed' && (
-                <button 
-                  className="btn btn-sm" 
-                  style={{ background: '#dcfce7', color: '#166534' }}
-                  onClick={() => {
-                    setClientRequests((prev: any) => prev.map((c: any) => 
-                      c.id === selectedItem.id ? { ...c, status: 'completed' } : c
-                    ));
-                    setSelectedItem(null);
-                  }}
-                >
-                  완료로 변경
-                </button>
+                <button className="btn btn-sm" style={{ background: '#dcfce7', color: '#166534' }} onClick={() => handleStatusChange(selectedItem.id, 'completed')}>완료로 변경</button>
               )}
               {selectedItem.status !== 'in-progress' && (
-                <button 
-                  className="btn btn-sm" 
-                  style={{ background: '#fef3c7', color: '#92400e' }}
-                  onClick={() => {
-                    setClientRequests((prev: any) => prev.map((c: any) => 
-                      c.id === selectedItem.id ? { ...c, status: 'in-progress' } : c
-                    ));
-                    setSelectedItem(null);
-                  }}
-                >
-                  진행중으로 변경
-                </button>
+                <button className="btn btn-sm" style={{ background: '#fef3c7', color: '#92400e' }} onClick={() => handleStatusChange(selectedItem.id, 'in-progress')}>진행중으로 변경</button>
               )}
             </div>
             <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
+              <button className="btn btn-primary btn-sm" onClick={() => handleEdit(selectedItem)}>✏ 수정</button>
               <button className="btn btn-danger btn-sm" onClick={() => handleDelete(selectedItem.id)}>삭제</button>
               <button className="btn btn-secondary btn-sm" onClick={handleCloseDetail}>닫기</button>
             </div>
@@ -283,7 +369,11 @@ export default function ClientRequestsPage({ selectedItemId, selectedItemType, h
       <div className="card">
         <div className="card-header">
           <h3 className="card-title">고객 의뢰 목록</h3>
-          <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
+          <div style={{ display: 'flex', gap: 'var(--spacing-sm)', alignItems: 'center' }}>
+            {isSupabaseActive && (
+              <span style={{ fontSize: '10px', padding: '2px 8px', background: 'var(--color-primary)', color: 'white', borderRadius: '4px' }}>Supabase 연결됨</span>
+            )}
+            <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>{clientRequests.length}건</span>
             <select className="form-select" style={{ width: 'auto' }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
               <option value="all">전체</option>
               <option value="in-progress">진행중</option>
@@ -379,16 +469,8 @@ export default function ClientRequestsPage({ selectedItemId, selectedItemType, h
                     key={item.id}
                     onClick={() => setSelectedItem(item)}
                     style={{ cursor: 'pointer', ...getRowStyle(item) }}
-                    onMouseOver={(e) => {
-                      if (!highlightedItemId || item.id !== highlightedItemId) {
-                        e.currentTarget.style.background = 'var(--color-bg-input)';
-                      }
-                    }}
-                    onMouseOut={(e) => {
-                      if (!highlightedItemId || item.id !== highlightedItemId) {
-                        e.currentTarget.style.background = 'transparent';
-                      }
-                    }}
+                    onMouseOver={(e) => { if (!highlightedItemId || item.id !== highlightedItemId) { e.currentTarget.style.background = 'var(--color-bg-input)'; } }}
+                    onMouseOut={(e) => { if (!highlightedItemId || item.id !== highlightedItemId) { e.currentTarget.style.background = 'transparent'; } }}
                   >
                     <td><strong>{item.clientName}</strong><br /><small>{item.contact}</small></td>
                     <td>{item.targetStock}</td>
@@ -406,8 +488,8 @@ export default function ClientRequestsPage({ selectedItemId, selectedItemType, h
         )}
       </div>
 
-      {/* 상세 모달 */}
       {renderDetail()}
+      {renderEditForm()}
     </div>
   );
 }
